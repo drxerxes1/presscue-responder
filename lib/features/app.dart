@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:presscue_patroller/core/constants/app_colors.dart';
 import 'package:presscue_patroller/features/app_sidebar.dart';
-import 'package:presscue_patroller/features/location/presentation/pages/location_page.dart';
 import 'package:presscue_patroller/features/location/presentation/providers/location_provider.dart';
+
+import 'location/presentation/pages/location_page.dart';
 
 class MainPage extends ConsumerWidget {
   const MainPage({super.key});
@@ -18,10 +19,7 @@ class MainPage extends ConsumerWidget {
       appBar: _buildAppBar(locationState),
       drawer: AppSidebar(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: LocationPage(),
-      ),
+      body: LocationPage(),
     );
   }
 

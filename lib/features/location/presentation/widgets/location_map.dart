@@ -16,10 +16,12 @@ import 'custom_marker_painter.dart';
 class LocationMap extends ConsumerWidget {
   final double latitude;
   final double longitude;
+  final MapController mapController;
 
   const LocationMap({
     required this.latitude,
     required this.longitude,
+    required this.mapController,
   });
 
   @override
@@ -52,6 +54,7 @@ class LocationMap extends ConsumerWidget {
         );
 
         return FlutterMap(
+          mapController: mapController,
           options: MapOptions(
             initialCenter: LatLng(position.latitude, position.longitude),
             initialZoom: 15,
