@@ -15,7 +15,7 @@ final markerProvider = FutureProvider<List<MarkerData>>((ref) async {
 
   return [
     MarkerData(
-      latitude: 6.21888861,
+      latitude: 6.22888861,
       longitude: 125.077,
       imageProvider: Future.value(image),
     ),

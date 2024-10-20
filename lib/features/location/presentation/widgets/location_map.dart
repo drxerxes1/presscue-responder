@@ -4,14 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:presscue_patroller/core/constants/app_colors.dart';
 import 'package:presscue_patroller/core/constants/app_constants.dart';
+import 'package:presscue_patroller/core/constants/app_icons.dart';
 import 'package:presscue_patroller/core/utils/load_image.dart';
 import 'package:presscue_patroller/core/utils/tile_provider_util.dart';
 import 'dart:ui' as ui;
-
-import '../../../../core/constants/app_icons.dart';
 import '../providers/location_provider.dart';
 import '../providers/marker_provider.dart';
 import 'custom_marker_painter.dart';
+
+// Define a state provider to track whether the route has been fetched
+final routeFetchedProvider = StateProvider<bool>((ref) => false);
 
 class LocationMap extends ConsumerWidget {
   final double latitude;
@@ -28,6 +30,8 @@ class LocationMap extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final position = ref.watch(locationNotifierProvider);
     final markerAsyncValue = ref.watch(markerProvider);
+    final polylines = ref.watch(polylinesProvider);
+    final routeFetched = ref.watch(routeFetchedProvider); // Watch the route fetched state
 
     if (position == null) {
       return const Center(child: CircularProgressIndicator());
@@ -35,7 +39,6 @@ class LocationMap extends ConsumerWidget {
 
     return markerAsyncValue.when(
       data: (markers) {
-        // Add current location marker with custom painter
         final currentLocationMarker = Marker(
           rotate: true,
           point: LatLng(position.latitude, position.longitude),
@@ -52,6 +55,28 @@ class LocationMap extends ConsumerWidget {
             },
           ),
         );
+
+        // Fetch the route to the first marker if available and not already fetched
+        if (markers.isNotEmpty && !routeFetched) {
+          final destination = markers[0]; // Choose a destination marker
+
+          // Fetch the route and update the polylines provider
+          ref.read(routeServiceProvider).getRoute(
+            LatLng(position.latitude, position.longitude),
+            LatLng(destination.latitude, destination.longitude),
+          ).then((route) {
+            ref.read(polylinesProvider.notifier).state = [
+              Polyline(
+                points: route,
+                color: AppColors.primaryColor,
+                strokeWidth: 4.0,
+              ),
+            ];
+            ref.read(routeFetchedProvider.notifier).state = true; // Mark as fetched
+          }).catchError((error) {
+            print('Failed to fetch route: $error');
+          });
+        }
 
         return FlutterMap(
           mapController: mapController,
@@ -83,27 +108,30 @@ class LocationMap extends ConsumerWidget {
                 ),
               ],
             ),
+            PolylineLayer(
+              polylines: polylines,
+            ),
             MarkerLayer(
               markers: [
-                // ...markers.map((marker) {
-                //   return Marker(
-                //     rotate: true,
-                //     point: LatLng(marker.latitude, marker.longitude),
-                //     child: FutureBuilder<ui.Image?>(
-                //       future: marker.imageProvider,
-                //       builder: (context, snapshot) {
-                //         return CustomPaint(
-                //           painter: MarkerPainter(image: snapshot.data),
-                //           child: const SizedBox(
-                //             width: 100,
-                //             height: 100,
-                //           ),
-                //         );
-                //       },
-                //     ),
-                //   );
-                // }).toList(),
-                currentLocationMarker, // Add the current location marker
+                ...markers.map((marker) {
+                  return Marker(
+                    rotate: true,
+                    point: LatLng(marker.latitude, marker.longitude),
+                    child: FutureBuilder<ui.Image?>(
+                      future: marker.imageProvider,
+                      builder: (context, snapshot) {
+                        return CustomPaint(
+                          painter: MarkerPainter(image: snapshot.data),
+                          child: const SizedBox(
+                            width: 100,
+                            height: 100,
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                }).toList(),
+                currentLocationMarker,
               ],
             ),
           ],

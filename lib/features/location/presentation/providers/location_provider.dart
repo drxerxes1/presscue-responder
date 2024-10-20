@@ -1,6 +1,9 @@
+import 'package:dio/dio.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:mapbox_gl/mapbox_gl.dart';
+import 'package:presscue_patroller/core/services/route_service.dart';
 import '../../data/location_repository_impl.dart';
 import '../../domain/repositories/location_repository.dart';
 import '../../domain/usecases/check_location_services.dart';
@@ -53,4 +56,17 @@ final locationPermissionProvider = FutureProvider<bool>((ref) async {
 final initialCameraPositionProvider = FutureProvider<CameraPosition>((ref) async {
   final getInitialCameraPosition = ref.watch(getInitialCameraPositionProvider);
   return await getInitialCameraPosition.call();
+});
+
+final dioProvider = Provider<Dio>((ref) {
+  return Dio(); // You can customize Dio instance here
+});
+
+final routeServiceProvider = Provider<RouteService>((ref) {
+  final dio = ref.watch(dioProvider);
+  return RouteService(dio);
+});
+
+final polylinesProvider = StateProvider<List<Polyline>>((ref) {
+  return []; // Initialize with an empty list
 });
