@@ -1,8 +1,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.VIBRATE"/>
     <application
         android:label="Presscue - Patroller"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
+        <meta-data
+            android:name="com.mapbox.token"
+            android:value="pk.eyJ1IjoicHJlc3NjdWUtZnJhbmsiLCJhIjoiY20wMXo1dDZqMDM4ZjJqcG1nMjYyNm90eiJ9.OOW0ACSZ4sCvBGqpbQ3Djg"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"
