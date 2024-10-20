@@ -30,7 +30,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
 
     ref.read(splashProvider.notifier).initializeApp().then((_) async {
       if (context.mounted) {
-        Navigator.of(context).pushReplacementNamed(AppRoutes.map);
+        Navigator.of(context).pushReplacementNamed(AppRoutes.main);
       }
     });
   }
