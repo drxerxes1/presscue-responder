@@ -1,7 +1,9 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart'; // Import for MapController
 import 'package:latlong2/latlong.dart';
+import '../../data/post_data.dart';
 import '../providers/location_provider.dart';
 import '../widgets/location_map.dart';
 
@@ -63,13 +65,29 @@ class _LocationPageState extends ConsumerState<LocationPage>
         // Add Floating Action Button for recentering
         floatingActionButton: liveLocation != null
             ? FloatingActionButton(
-                onPressed: () {
+                onPressed: () async {
                   // Use animatedMove to smoothly move the camera
                   final targetLocation = LatLng(
                     liveLocation.latitude,
                     liveLocation.longitude,
                   );
                   _animatedMapMove(targetLocation, 15.0);
+
+                  final locationDataSource = LocationDataSource(Dio());
+
+                  // Sample data to send
+                  Map<String, dynamic> locationData = {
+                    "latitude": liveLocation.latitude,
+                    "longitude": liveLocation.longitude,
+                  };
+
+                  try {
+                    final response = await locationDataSource
+                        .postUrgentIncident(locationData);
+                    print('Response received: ${response.data}');
+                  } catch (e) {
+                    print('Error occurred while reporting incident: $e');
+                  }
                 },
                 child: Icon(Icons.my_location),
               )
@@ -93,7 +111,8 @@ class _LocationPageState extends ConsumerState<LocationPage>
     ); // Create a tween for zoom level
 
     var controller = AnimationController(
-      duration: const Duration(milliseconds: 500), // Set duration for the animation
+      duration:
+          const Duration(milliseconds: 500), // Set duration for the animation
       vsync: this, // Use TickerProvider from the mixin
     );
 

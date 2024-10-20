@@ -12,7 +12,7 @@ import '../providers/location_provider.dart';
 import '../providers/marker_provider.dart';
 import 'custom_marker_painter.dart';
 
-// Define a state provider to track whether the route has been fetched
+// State provider to manage route fetched state
 final routeFetchedProvider = StateProvider<bool>((ref) => false);
 
 class LocationMap extends ConsumerWidget {
@@ -31,7 +31,7 @@ class LocationMap extends ConsumerWidget {
     final position = ref.watch(locationNotifierProvider);
     final markerAsyncValue = ref.watch(markerProvider);
     final polylines = ref.watch(polylinesProvider);
-    final routeFetched = ref.watch(routeFetchedProvider); // Watch the route fetched state
+    final routeFetched = ref.watch(routeFetchedProvider);
 
     if (position == null) {
       return const Center(child: CircularProgressIndicator());
@@ -56,83 +56,101 @@ class LocationMap extends ConsumerWidget {
           ),
         );
 
-        // Fetch the route to the first marker if available and not already fetched
-        if (markers.isNotEmpty && !routeFetched) {
-          final destination = markers[0]; // Choose a destination marker
-
-          // Fetch the route and update the polylines provider
-          ref.read(routeServiceProvider).getRoute(
-            LatLng(position.latitude, position.longitude),
-            LatLng(destination.latitude, destination.longitude),
-          ).then((route) {
-            ref.read(polylinesProvider.notifier).state = [
-              Polyline(
-                points: route,
-                color: AppColors.primaryColor,
-                strokeWidth: 4.0,
-              ),
-            ];
-            ref.read(routeFetchedProvider.notifier).state = true; // Mark as fetched
-          }).catchError((error) {
-            print('Failed to fetch route: $error');
-          });
-        }
-
-        return FlutterMap(
-          mapController: mapController,
-          options: MapOptions(
-            initialCenter: LatLng(position.latitude, position.longitude),
-            initialZoom: 15,
-            minZoom: 5,
-            maxZoom: 25,
-          ),
+        return Stack(
           children: [
-            TileLayer(
-              tileProvider: CachedTileProvider(),
-              urlTemplate:
-                  'https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}',
-              additionalOptions: {
-                'accessToken': AppConstants.mapBoxAccessToken,
-                'id': AppConstants.mapBoxStyleSatelliteStreetId,
-              },
-            ),
-            CircleLayer(
-              circles: [
-                CircleMarker(
-                  point: LatLng(position.latitude, position.longitude),
-                  radius: 25,
-                  useRadiusInMeter: true,
-                  color: AppColors.primaryColorLight.withOpacity(0.3),
-                  borderColor: AppColors.primaryColorLight.withOpacity(0.7),
-                  borderStrokeWidth: 2,
+            FlutterMap(
+              mapController: mapController,
+              options: MapOptions(
+                initialCenter: LatLng(position.latitude, position.longitude),
+                initialZoom: 15,
+                minZoom: 5,
+                maxZoom: 25,
+              ),
+              children: [
+                TileLayer(
+                  tileProvider: CachedTileProvider(),
+                  urlTemplate:
+                      'https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}',
+                  additionalOptions: {
+                    'accessToken': AppConstants.mapBoxAccessToken,
+                    'id': AppConstants.mapBoxStyleSatelliteStreetId,
+                  },
+                ),
+                CircleLayer(
+                  circles: [
+                    CircleMarker(
+                      point: LatLng(position.latitude, position.longitude),
+                      radius: 25,
+                      useRadiusInMeter: true,
+                      color: AppColors.primaryColorLight.withOpacity(0.3),
+                      borderColor: AppColors.primaryColorLight.withOpacity(0.7),
+                      borderStrokeWidth: 2,
+                    ),
+                  ],
+                ),
+                PolylineLayer(
+                  polylines: polylines,
+                ),
+                MarkerLayer(
+                  markers: [
+                    ...markers.map((marker) {
+                      return Marker(
+                        rotate: true,
+                        point: LatLng(marker.latitude, marker.longitude),
+                        child: FutureBuilder<ui.Image?>(
+                          future: marker.imageProvider,
+                          builder: (context, snapshot) {
+                            return CustomPaint(
+                              painter: MarkerPainter(image: snapshot.data),
+                              child: const SizedBox(
+                                width: 100,
+                                height: 100,
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    }).toList(),
+                    currentLocationMarker,
+                  ],
                 ),
               ],
             ),
-            PolylineLayer(
-              polylines: polylines,
-            ),
-            MarkerLayer(
-              markers: [
-                ...markers.map((marker) {
-                  return Marker(
-                    rotate: true,
-                    point: LatLng(marker.latitude, marker.longitude),
-                    child: FutureBuilder<ui.Image?>(
-                      future: marker.imageProvider,
-                      builder: (context, snapshot) {
-                        return CustomPaint(
-                          painter: MarkerPainter(image: snapshot.data),
-                          child: const SizedBox(
-                            width: 100,
-                            height: 100,
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                }).toList(),
-                currentLocationMarker,
-              ],
+            Positioned(
+              bottom: 20,
+              left: 20,
+              child: ElevatedButton(
+                onPressed: () {
+                  if (markers.isNotEmpty && !routeFetched) {
+                    final destination = markers[0];
+
+                    // Fetch the route and update the polylines provider
+                    ref
+                        .read(routeServiceProvider)
+                        .getRoute(
+                          LatLng(position.latitude, position.longitude),
+                          LatLng(destination.latitude, destination.longitude),
+                        )
+                        .then((route) {
+                      ref.read(polylinesProvider.notifier).state = [
+                        Polyline(
+                          points: route,
+                          color: AppColors.primaryColor,
+                          strokeWidth: 4.0,
+                        ),
+                      ];
+                      ref.read(routeFetchedProvider.notifier).state = true;
+
+                      Future.delayed(const Duration(seconds: 1), () {
+                        ref.read(routeFetchedProvider.notifier).state = false;
+                      });
+                    }).catchError((error) {
+                      print('Failed to fetch route: $error');
+                    });
+                  }
+                },
+                child: Text('Navigate'),
+              ),
             ),
           ],
         );
