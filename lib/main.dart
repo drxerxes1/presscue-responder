@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 // import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/adapters.dart';
+import 'package:presscue_patroller/core/database/boxes.dart';
+import 'package:presscue_patroller/core/database/user.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/constants/app_colors.dart';
 import 'core/navigation/app_routes.dart';
@@ -12,6 +15,10 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   sharedPreferences = await SharedPreferences.getInstance();
   // await dotenv.load(fileName: "assets/config/.env");
+  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
+  Hive.registerAdapter(UserAdapter());
+  boxUsers = await Hive.openBox<User>('userBox');
   runApp(
     const ProviderScope(
       child: MyApp(),
