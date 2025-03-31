@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:presscue_patroller/core/constants/app_colors.dart';
 import 'package:presscue_patroller/core/constants/app_text.dart';
+import 'package:presscue_patroller/core/services/base_url_provider.dart';
 import 'package:presscue_patroller/core/utils/slide_page_route.dart';
 import 'package:presscue_patroller/features/auth/login_password_page.dart';
 import 'package:presscue_patroller/features/auth/validate_phone_number.dart';
@@ -92,9 +93,12 @@ class _LoginPhoneNumberPageState extends ConsumerState<LoginPhoneNumberPage> {
                 width: double.infinity,
                 height: 60,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     final phoneNumber = _phoneController.text;
                     final validationMessage = _phoneValidator.call(phoneNumber);
+
+                    String url = await BaseUrlProvider.baseUrl;
+                    print("Current Base URL: ${url}");
 
                     if (validationMessage != '') {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -109,7 +113,8 @@ class _LoginPhoneNumberPageState extends ConsumerState<LoginPhoneNumberPage> {
                       Navigator.push(
                         context,
                         SlidePageRoute(
-                          builder: (context) =>  LoginPasswordPage(phoneNumber: fullPhoneNumber),
+                          builder: (context) =>
+                              LoginPasswordPage(phoneNumber: fullPhoneNumber),
                           transitionType:
                               SlidePageTransitionType.slideFromRight,
                         ),

@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:location/location.dart';
-import 'package:presscue_patroller/main.dart';
-import '../../../../core/navigation/app_routes.dart';
-import '../providers/splash_provider.dart';
+import 'package:presscue_patroller/core/database/boxes.dart';
+import 'package:presscue_patroller/core/navigation/app_routes.dart';
+import 'package:presscue_patroller/features/onboarding/presentation/providers/splash_provider.dart';
+
 import '../widgets/splash_content.dart';
 
 class SplashPage extends ConsumerStatefulWidget {
@@ -22,7 +21,6 @@ class _SplashPageState extends ConsumerState<SplashPage>
   @override
   void initState() {
     super.initState();
-    initializeLocationAndSave();
     _controller = AnimationController(
       duration: const Duration(seconds: 1),
       vsync: this,
@@ -32,37 +30,34 @@ class _SplashPageState extends ConsumerState<SplashPage>
 
     _controller.forward();
 
+    // boxUsers.put(
+    //         1,
+    //         User(
+    //             userId: '1',
+    //             name: 'Drex Omanio',
+    //             role: 'role_title',
+    //             roleId: 'role_id',
+    //             sector: 'sector',
+    //             phone: 'widget.phoneNumber',
+    //             device: 'deviceModel'));
+    //     print(boxUsers.get(1).toString());
+
     ref.read(splashProvider.notifier).initializeApp().then((_) async {
-      if (context.mounted) {
-        Navigator.of(context).pushReplacementNamed(AppRoutes.main);
+      try {
+        if (boxUsers.containsKey(1)) {
+          if (context.mounted) {
+            Navigator.pushNamedAndRemoveUntil(
+                context, AppRoutes.main, (route) => false);
+          }
+        } else {
+          if (context.mounted) {
+            Navigator.of(context).pushReplacementNamed(AppRoutes.onBoarding);
+          }
+        }
+      } catch (e) {
+        print('Error opening Hive box: $e');
       }
     });
-  }
-
-  void initializeLocationAndSave() async {
-    Location _location = Location();
-    bool? _serviceEnabled;
-    PermissionStatus? _permissionGranted;
-
-    _serviceEnabled = await _location.serviceEnabled();
-    if (!_serviceEnabled) {
-      _serviceEnabled = await _location.requestService();
-    }
-
-    _permissionGranted = await _location.hasPermission();
-    if (_permissionGranted == PermissionStatus.denied) {
-      _permissionGranted = await _location.requestPermission();
-    }
-
-    // Get capture the current user location
-    LocationData _locationData = await _location.getLocation();
-    // ignore: unused_local_variable
-    LatLng currentLatLng =
-        LatLng(_locationData.latitude!, _locationData.longitude!);
-
-    // Store the user location in sharedPreferences
-    sharedPreferences.setDouble('latitude', _locationData.latitude!);
-    sharedPreferences.setDouble('longitude', _locationData.longitude!);
   }
 
   @override

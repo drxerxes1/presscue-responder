@@ -1,30 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-// import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive_flutter/adapters.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:presscue_patroller/core/database/boxes.dart';
 import 'package:presscue_patroller/core/database/user.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'core/constants/app_colors.dart';
+import 'core/database/base_url.dart';
 import 'core/navigation/app_routes.dart';
-
-late SharedPreferences sharedPreferences;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  sharedPreferences = await SharedPreferences.getInstance();
-  // await dotenv.load(fileName: "assets/config/.env");
-  WidgetsFlutterBinding.ensureInitialized();
-  await Hive.initFlutter();
-  Hive.registerAdapter(UserAdapter());
-  boxUsers = await Hive.openBox<User>('userBox');
+  await setup();
+  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+
   runApp(
     const ProviderScope(
       child: MyApp(),
     ),
   );
-  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+}
+
+Future<void> setup() async {
+  await dotenv.load(fileName: "assets/config/.env");
+  MapboxOptions.setAccessToken(dotenv.env['MAPBOX_ACCESS_TOKEN']!);
+
+  await Hive.initFlutter();
+  Hive.registerAdapter(UserAdapter());
+  Hive.registerAdapter(BaseUrlModelAdapter());
+
+  boxUsers = await Hive.openBox<User>('userBox');
+  baseUrlBox = await Hive.openBox<BaseUrlModel>('userBaseUrl');
 }
 
 class MyApp extends StatelessWidget {

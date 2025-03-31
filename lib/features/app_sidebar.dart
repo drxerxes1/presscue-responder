@@ -5,6 +5,13 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:presscue_patroller/core/constants/app_colors.dart';
 import 'package:presscue_patroller/core/constants/app_icons.dart';
 import 'package:presscue_patroller/core/constants/app_text.dart';
+import 'package:presscue_patroller/core/database/boxes.dart';
+import 'package:presscue_patroller/core/database/user.dart';
+import 'package:presscue_patroller/core/navigation/app_routes.dart';
+import 'package:presscue_patroller/core/utils/widgets.dart/custom_message.dart';
+import 'package:presscue_patroller/core/utils/widgets.dart/modal.dart';
+
+import 'location/data/location_services.dart';
 
 class AppSidebar extends ConsumerWidget {
   const AppSidebar({super.key});
@@ -12,39 +19,44 @@ class AppSidebar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mediaQuery = MediaQuery.of(context);
+    final user = boxUsers.get(1);
 
     return Drawer(
       backgroundColor: AppColors.accent,
       child: ListView(
         padding: EdgeInsets.all(mediaQuery.size.width * 0.05),
         children: [
+          // If user data exists, build profile; otherwise show default
+          if (user != null)
+            _buildUserProfile(mediaQuery, user)
+          else
+            const Center(child: Text('No user data')),
 
-          _buildUserProfile(mediaQuery),
           // Sidebar options (static for now)
           _buildSidebarOption(
             iconPath: AppIcons.icTrackReports,
             label: 'Track Reports',
-            onTap: () => _onOptionSelected('Track Reports'),
+            onTap: () => _onOptionSelected(context),
           ),
           _buildSidebarOption(
             iconPath: AppIcons.icLocationShare,
             label: 'Location Sharing',
-            onTap: () => _onOptionSelected('Location Sharing'),
+            onTap: () => _onOptionSelected(context),
           ),
           _buildSidebarOption(
             iconPath: AppIcons.icPrivacySecurity,
             label: 'Privacy & Security',
-            onTap: () => _onOptionSelected('Privacy & Security'),
+            onTap: () => _onOptionSelected(context),
           ),
           _buildSidebarOption(
             iconPath: AppIcons.icHelp,
             label: 'Help',
-            onTap: () => _onOptionSelected('Help'),
+            onTap: () => _onOptionSelected(context),
           ),
           _buildSidebarOption(
             iconPath: AppIcons.icAbout,
             label: 'About',
-            onTap: () => _onOptionSelected('About'),
+            onTap: () => _onOptionSelected(context),
           ),
 
           // Spacer to push the logout option to the bottom
@@ -60,21 +72,22 @@ class AppSidebar extends ConsumerWidget {
               color: AppColors.primaryColor,
             ),
             iconColor: AppColors.primaryColor,
-            onTap: () => _onOptionSelected('Log Out'),
+            onTap: () => _showCustomModal(context, ref),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildUserProfile(MediaQueryData mediaQuery) {
+  // Build the user profile section dynamically using Hive User data
+  Widget _buildUserProfile(MediaQueryData mediaQuery, User user) {
     return UserAccountsDrawerHeader(
       accountName: AutoSizeText(
-        'Patroller Account',
+        user.name, // Access directly from Hive User object
         style: const TextStyle(color: Colors.black),
       ),
       accountEmail: AutoSizeText(
-        'Hello World!',
+        user.phone, // Access directly from Hive User object
         style: const TextStyle(color: Colors.black),
       ),
       decoration: BoxDecoration(
@@ -113,7 +126,39 @@ class AppSidebar extends ConsumerWidget {
   }
 
   // Handler for when an option is tapped
-  void _onOptionSelected(String option) {
-    print('$option Tapped');
+  void _onOptionSelected(BuildContext context) {
+    CustomToastMessage(
+      message: 'Coming Soon',
+      iconPath: AppIcons.icPresscueSOS,
+      backgroundColor: AppColors.accent,
+      iconBackgroundColor: AppColors.primaryColor,
+    ).show(context);
+  }
+
+  // Logout functionality
+  void _onLogout(BuildContext context, WidgetRef ref) {
+    ref.read(locationServiceProvider).stopSendingLocation();
+    print('Logout Tapped');
+    Navigator.pushNamedAndRemoveUntil(
+        context, AppRoutes.onBoarding, (route) => false);
+    boxUsers.delete(1);
+  }
+
+  void _showCustomModal(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return CustomModal(
+          title: 'Log Out?',
+          content: 'Are you sure you want to log out?',
+          onConfirm: () {
+            _onLogout(context, ref);
+          },
+          onCancel: () {
+            Navigator.of(context).pop();
+          },
+        );
+      },
+    );
   }
 }

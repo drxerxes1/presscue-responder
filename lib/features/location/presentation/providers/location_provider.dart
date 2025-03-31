@@ -1,13 +1,13 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_map/flutter_map.dart';
+// import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:mapbox_gl/mapbox_gl.dart';
+// import 'package:mapbox_gl/mapbox_gl.dart';
 import 'package:presscue_patroller/core/services/route_service.dart';
 import '../../data/location_repository_impl.dart';
 import '../../domain/repositories/location_repository.dart';
 import '../../domain/usecases/check_location_services.dart';
-import '../../domain/usecases/get_initial_camera_position.dart';
+// import '../../domain/usecases/get_initial_camera_position.dart';
 import '../../domain/usecases/request_location_permission.dart';
 import 'location_notifier.dart' as notifier;
 
@@ -15,6 +15,8 @@ import 'location_notifier.dart' as notifier;
 final locationRepositoryProvider = Provider<LocationRepository>((ref) {
   return LocationRepositoryImpl();
 });
+
+final serverResponseProvider = StateProvider<Map<String, dynamic>?>((ref) => null);
 
 // Define the CheckLocationServices use case provider
 final checkLocationServicesProvider = Provider<CheckLocationServices>((ref) {
@@ -27,9 +29,9 @@ final requestLocationPermissionProvider = Provider<RequestLocationPermission>((r
 });
 
 // Define the GetInitialCameraPosition use case provider
-final getInitialCameraPositionProvider = Provider<GetInitialCameraPosition>((ref) {
-  return GetInitialCameraPosition();
-});
+// final getInitialCameraPositionProvider = Provider<GetInitialCameraPosition>((ref) {
+//   return GetInitialCameraPosition();
+// });
 
 // Define the LocationNotifier provider
 final locationNotifierProvider = StateNotifierProvider<notifier.LocationNotifier, Position?>((ref) {
@@ -53,10 +55,10 @@ final locationPermissionProvider = FutureProvider<bool>((ref) async {
 });
 
 // Define the provider for initial camera position
-final initialCameraPositionProvider = FutureProvider<CameraPosition>((ref) async {
-  final getInitialCameraPosition = ref.watch(getInitialCameraPositionProvider);
-  return await getInitialCameraPosition.call();
-});
+// final initialCameraPositionProvider = FutureProvider<CameraPosition>((ref) async {
+//   final getInitialCameraPosition = ref.watch(getInitialCameraPositionProvider);
+//   return await getInitialCameraPosition.call();
+// });
 
 final dioProvider = Provider<Dio>((ref) {
   return Dio(); // You can customize Dio instance here
@@ -67,6 +69,6 @@ final routeServiceProvider = Provider<RouteService>((ref) {
   return RouteService(dio);
 });
 
-final polylinesProvider = StateProvider<List<Polyline>>((ref) {
-  return []; // Initialize with an empty list
-});
+// final polylinesProvider = StateProvider<List<Polyline>>((ref) {
+//   return []; // Initialize with an empty list
+// });

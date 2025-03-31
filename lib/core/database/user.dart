@@ -9,6 +9,9 @@ class User {
     required this.name,
     required this.phone,
     required this.device,
+    required this.userId,
+    required this.roleId,
+    required this.token,
   });
 
   @HiveField(0)
@@ -26,9 +29,19 @@ class User {
   @HiveField(4)
   String device;
 
+  @HiveField(5)
+  String userId;
+
+  @HiveField(6)
+  String roleId;
+
+  @HiveField(7)
+  String token;
+
   @override
   String toString() {
     return '''
-User{name: $role, email: $sector, password: $name, phone: $phone, device: $device}''';
+User{role: $role, sector: $sector, name: $name, phone: $phone, device: $device, userId: $userId, roleId: $roleId, token: $token}
+  ''';
   }
 }

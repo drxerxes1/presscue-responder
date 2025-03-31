@@ -2,11 +2,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.VIBRATE"/>
     <application
-        android:label="Presscue - Patroller"
+        android:label="Responder"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon">
+        android:icon="@mipmap/ic_launcher">
         <meta-data
             android:name="com.mapbox.token"
             android:value="pk.eyJ1IjoicHJlc3NjdWUtZnJhbmsiLCJhIjoiY20wMXo1dDZqMDM4ZjJqcG1nMjYyNm90eiJ9.OOW0ACSZ4sCvBGqpbQ3Djg"/>

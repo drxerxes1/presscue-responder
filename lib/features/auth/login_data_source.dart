@@ -15,9 +15,10 @@ class LoginDataSourceImpl extends BaseRemoteDataSource implements LoginDataSourc
 
   @override
   Future<Response> loginUser(Map<String, dynamic> jsonData) async {
-    final uri = BaseUrlProvider.buildUri('login');
+    final uri = await BaseUrlProvider.buildUri('login');
     log('Attempting to connect to: $uri');
     log('Data being submitted: $jsonData');
+    print('Data being submitted: $jsonData');
 
     final response = await postRequest(uri, jsonData);
     handleResponse(response);

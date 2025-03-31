@@ -17,6 +17,9 @@ class AppIcons {
   static const icContactSos = '${_svg}contact_sos.svg';
   static const icCall = '${_svg}call.svg';
   static const icPresscue = '${_svg}presscue.svg';
+  static const icPresscuew = '${_svg}presscuew.svg';
+  static const icResponder = '${_svg}responder.svg';
+  static const icResponderSplash = '${_svg}responder_splash.svg';
   static const icAbout = '${_svg}about.svg';
   static const icHelp = '${_svg}help.svg';
   static const icLocationShare = '${_svg}location_share.svg';

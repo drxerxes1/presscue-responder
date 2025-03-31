@@ -2,10 +2,11 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:presscue_patroller/core/constants/app_colors.dart';
+import 'package:presscue_patroller/core/constants/app_icons.dart';
+import 'package:presscue_patroller/core/utils/widgets.dart/custom_message.dart';
 import 'package:presscue_patroller/features/app_sidebar.dart';
 import 'package:presscue_patroller/features/location/presentation/providers/location_provider.dart';
-
-import 'location/presentation/pages/location_page.dart';
+import 'package:presscue_patroller/features/location/presentation/pages/map.dart';
 
 class MainPage extends ConsumerWidget {
   const MainPage({super.key});
@@ -16,14 +17,14 @@ class MainPage extends ConsumerWidget {
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      appBar: _buildAppBar(locationState),
+      appBar: _buildAppBar(locationState, context),
       drawer: AppSidebar(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      body: LocationPage(),
+      body: MapPage(),
     );
   }
 
-  AppBar _buildAppBar(locationState) {
+  AppBar _buildAppBar(locationState, context) {
     return AppBar(
       title: Column(
         mainAxisAlignment: MainAxisAlignment.start,
@@ -61,7 +62,14 @@ class MainPage extends ConsumerWidget {
       actions: [
         IconButton(
           icon: const Icon(Icons.chat_bubble_outline_outlined),
-          onPressed: () {},
+          onPressed: () {
+            CustomToastMessage(
+              message: 'Coming Soon',
+              iconPath: AppIcons.icPresscueSOS,
+              backgroundColor: AppColors.accent,
+              iconBackgroundColor: AppColors.primaryColor,
+            ).show(context);
+          },
         ),
       ],
     );
