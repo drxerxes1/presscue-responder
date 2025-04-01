@@ -8,7 +8,8 @@
     <application
         android:label="Responder"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:resizeableActivity="false">
         <meta-data
             android:name="com.mapbox.token"
             android:value="pk.eyJ1IjoicHJlc3NjdWUtZnJhbmsiLCJhIjoiY20wMXo1dDZqMDM4ZjJqcG1nMjYyNm90eiJ9.OOW0ACSZ4sCvBGqpbQ3Djg"/>
