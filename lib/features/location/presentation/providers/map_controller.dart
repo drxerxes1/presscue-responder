@@ -30,13 +30,13 @@ class MapController {
           ref.read(isResponseClickedProvider.notifier).state = false;
 
       if (!isRespond) {
-        ref.read(locationServiceProvider).startSendingLocation(
-              position.latitude,
-              position.longitude,
-              url,
-              (responseData) => print("Server Response: $responseData"),
-              ref,
-            );
+        // ref.read(locationServiceProvider).startSendingLocation(
+        //       position.latitude,
+        //       position.longitude,
+        //       url,
+        //       (responseData) => print("Server Response: $responseData"),
+        //       ref,
+        //     );
       }
 
       mapboxMap?.location.updateSettings(

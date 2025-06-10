@@ -6,7 +6,7 @@ class BaseUrlProvider {
     final storedUrl = baseUrlBox.get(1);
     return storedUrl != null && storedUrl.baseUrl.isNotEmpty
         ? storedUrl.baseUrl
-        : 'presscue.laravel-sail.site:8080';
+        : '100.68.25.1:81';
   }
 
   static String buildUri(String endpoint) {

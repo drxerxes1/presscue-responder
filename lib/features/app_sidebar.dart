@@ -137,7 +137,7 @@ class AppSidebar extends ConsumerWidget {
 
   // Logout functionality
   void _onLogout(BuildContext context, WidgetRef ref) {
-    ref.read(locationServiceProvider).stopSendingLocation();
+    // ref.read(locationServiceProvider).stopSendingLocation();
     print('Logout Tapped');
     Navigator.pushNamedAndRemoveUntil(
         context, AppRoutes.onBoarding, (route) => false);

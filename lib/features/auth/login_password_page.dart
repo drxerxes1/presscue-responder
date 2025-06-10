@@ -168,9 +168,8 @@ class _LoginPasswordPageState extends ConsumerState<LoginPasswordPage> {
 
         final String user_id = userData['user']['id'].toString();
         final String name = userData['user']['name'];
-        final String role_id = userData['user']['role']['id'].toString();
-        final String role_title = userData['user']['role']['title'];
-        final String sector = userData['user']['sector']['id'].toString();
+        final String category_id = userData['user']['category_id'].toString();
+        final String sector_id = userData['user']['sector_id'].toString();
         final String token = userData['token'].toString();
         final deviceInfo = await DeviceInfo.getPhoneInfo();
         final deviceModel = deviceInfo['model'].toString();
@@ -182,9 +181,8 @@ class _LoginPasswordPageState extends ConsumerState<LoginPasswordPage> {
             User(
                 userId: user_id,
                 name: name,
-                role: role_title,
-                roleId: role_id,
-                sector: sector,
+                category_id: category_id,
+                sector_id: sector_id,
                 token: token,
                 phone: widget.phoneNumber,
                 device: deviceModel));

@@ -48,7 +48,7 @@ dependencies:
   flutter_svg: ^2.0.10+1
   auto_size_text: ^3.0.0
   dio: ^5.7.0
-  vibration: ^1.8.4
+  vibration: 
   shared_preferences: ^2.0.13
   flutter_dotenv: ^5.0.2  
   device_info_plus: ^10.1.2
@@ -59,6 +59,7 @@ dependencies:
   delightful_toast: ^1.1.0
   audioplayers: ^5.2.1
   timeline_tile: ^2.0.0
+  web_socket_channel: ^3.0.3
   # path_provider: ^2.1.4
 
 dev_dependencies:

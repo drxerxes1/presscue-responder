@@ -51,8 +51,7 @@ class SlidePageRoute<T> extends MaterialPageRoute<T> {
         );
 
       case SlidePageTransitionType.slideFromRight:
-      default:
-        // Default slide transition from the right
+      // Default slide transition from the right
         return SlideTransition(
           position: Tween<Offset>(
             begin: const Offset(1.0, 0.0),
