@@ -139,12 +139,14 @@ class PrivateWebSocketService {
 
     if (event == 'pusher:connection_established') {
       return 'connection_established';
+    } else if (event == 'pusher:error') {
+      return 'error';
     } else if (event == 'App\\Events\\NewTimeline') {
       return 'new_timeline';
     } else if (event == 'App\\Events\\InitialTimeline') {
       return 'initial_timeline';
-    } else if (event == 'pusher:error') {
-      return 'error';
+    } else if (event == 'App\\Events\\PatrollerDispatched') {
+      return 'patroller_dispatched';
     }
 
     return null;
@@ -174,10 +176,15 @@ class PrivateWebSocketService {
       if (response.statusCode == 200) {
         final authData = jsonDecode(response.body);
 
-        return {
+        final result = <String, String>{
           'auth': authData['auth'],
-          'channel_data': authData['channel_data'],
         };
+
+        if (authData['channel_data'] != null) {
+          result['channel_data'] = authData['channel_data'];
+        }
+
+        return result;
       } else {
         print('Auth failed: ${response.statusCode} ${response.body}');
         return null;

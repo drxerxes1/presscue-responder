@@ -21,15 +21,26 @@ class MainPage extends ConsumerStatefulWidget {
 }
 
 class _MainPageState extends ConsumerState<MainPage> {
-  final wsService = PrivateWebSocketService();
-  bool _hasSetUpListener = false;
+  final presenceService = PrivateWebSocketService();
+  final privateService = PrivateWebSocketService();
   bool _isDisposed = false;
+  late ProviderSubscription<Position?> _locationListener;
 
   @override
   void initState() {
     super.initState();
 
-    wsService.connect(
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _locationListener = ref.listenManual<Position?>(
+        locationNotifierProvider,
+        (previous, next) {
+          if (_isDisposed || next == null) return;
+          _handleMovement(next);
+        },
+      );
+    });
+
+    presenceService.connect(
       onStatusChanged: (status) {
         if (!_isDisposed) {
           ref.read(webSocketConnectionStatusProvider.notifier).state = status;
@@ -38,51 +49,32 @@ class _MainPageState extends ConsumerState<MainPage> {
       channelType: WebSocketChannelType.presence,
       onEventReceived: _handleWebSocketEvent,
     );
+
+    privateService.connect(
+      onStatusChanged: (status) {
+        if (!_isDisposed) {
+          ref.read(webSocketConnectionStatusProvider.notifier).state = status;
+        }
+      },
+      channelType: WebSocketChannelType.private,
+      onEventReceived: _handleWebSocketEvent,
+    );
   }
 
   @override
   void dispose() {
     _isDisposed = true;
-    wsService.disconnect();
-    _hasSetUpListener = false;
+    presenceService.disconnect();
+    privateService.disconnect();
+
+    _locationListener.close();
+
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final locationState = ref.watch(locationNotifierProvider);
-    final sector_id = boxUsers.get(1)?.sector_id ?? '';
-
-    // Set up listener ONCE
-    if (!_hasSetUpListener) {
-      ref.listen<Position?>(locationNotifierProvider, (previous, next) async {
-        if (next == null) return;
-
-        final tracker = ref.read(locationTrackerProvider.notifier);
-        final (hasMoved, distance) =
-            await tracker.evaluateMovement(newPosition: next);
-
-        if (hasMoved) {
-          final locationData = {
-            'latitude': next.latitude,
-            'longitude': next.longitude,
-            'distance': distance.toStringAsFixed(2),
-          };
-
-          final remoteDataSource = ref.read(remoteDataSourceProvider);
-          final url = BaseUrlProvider.buildUri('incident/${sector_id}/move');
-
-          try {
-            await remoteDataSource.postRequestWithToken(
-              url,
-              locationData,
-            );
-          } catch (e) {
-            debugPrint('Failed to send location update: $e');
-          }
-        }
-      });
-    }
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -160,5 +152,29 @@ class _MainPageState extends ConsumerState<MainPage> {
     if (_isDisposed) return;
     print('Event Name: $eventName');
     return ref.read(eventServiceProvider.notifier).updateEvent(eventName, data);
+  }
+
+  Future<void> _handleMovement(Position next) async {
+    final tracker = ref.read(locationTrackerProvider.notifier);
+    final (hasMoved, distance) =
+        await tracker.evaluateMovement(newPosition: next);
+
+    if (hasMoved) {
+      final locationData = {
+        'latitude': next.latitude,
+        'longitude': next.longitude,
+        'distance': distance.toStringAsFixed(2),
+      };
+
+      final remoteDataSource = ref.read(remoteDataSourceProvider);
+      final sectorId = boxUsers.get(1)?.sector_id ?? '';
+      final url = BaseUrlProvider.buildUri('incident/$sectorId/move');
+
+      try {
+        await remoteDataSource.postRequestWithToken(url, locationData);
+      } catch (e) {
+        debugPrint('Failed to send location update: $e');
+      }
+    }
   }
 }

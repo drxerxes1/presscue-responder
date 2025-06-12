@@ -129,7 +129,7 @@ class _MapState extends ConsumerState<MapPage> {
                   child: isResponseClicked
                       ? BuildTimelineSheet(scrollController: scrollController)
                       : BuildDefaultSheet(
-                          scrollController: scrollController, ref: ref),
+                          scrollController: scrollController),
                 );
               },
             ),

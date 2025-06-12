@@ -5,35 +5,34 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:presscue_patroller/core/constants/app_colors.dart';
 import 'package:presscue_patroller/core/constants/app_text.dart';
 import 'package:presscue_patroller/core/services/base_url_provider.dart';
+import 'package:presscue_patroller/core/services/socket/private_websocket_channel.dart';
 import 'package:presscue_patroller/features/location/data/event_service_provider.dart';
 import 'package:presscue_patroller/features/location/presentation/providers/incident_provider.dart';
 import 'package:vibration/vibration.dart';
 import '../../data/respond_emergency.dart';
 import '../providers/sheet_provider.dart';
 
-class BuildDefaultSheet extends StatefulWidget {
+class BuildDefaultSheet extends ConsumerStatefulWidget {
   final ScrollController scrollController;
-  final WidgetRef ref;
 
   const BuildDefaultSheet({
     Key? key,
     required this.scrollController,
-    required this.ref,
   }) : super(key: key);
 
   @override
-  State<BuildDefaultSheet> createState() => _BuildDefaultSheetState();
+  ConsumerState<BuildDefaultSheet> createState() => _BuildDefaultSheetState();
 }
 
-class _BuildDefaultSheetState extends State<BuildDefaultSheet> {
+class _BuildDefaultSheetState extends ConsumerState<BuildDefaultSheet> {
   final player = AudioPlayer();
   bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
-    final hasPlayedSound = widget.ref.watch(hasPlayedSoundProvider);
-
-    final event = widget.ref.watch(eventServiceProvider);
+    final hasPlayedSound = ref.watch(hasPlayedSoundProvider);
+    final connectionStatus = ref.watch(webSocketConnectionStatusProvider);
+    final event = ref.watch(eventServiceProvider);
 
     final eventName = event?.eventName;
     final eventData = event?.data;
@@ -41,18 +40,18 @@ class _BuildDefaultSheetState extends State<BuildDefaultSheet> {
     final String message = eventData?['message'] ?? "No message provided";
     var content = eventData?['content'] ?? "No content available";
 
-    if (eventName == 'new_timeline' && !hasPlayedSound) {
+    if (eventName == 'patroller_dispatched' && !hasPlayedSound) {
       playSound();
       Future.microtask(() {
-        widget.ref.read(hasPlayedSoundProvider.notifier).state = true;
+        ref.read(hasPlayedSoundProvider.notifier).state = true;
       });
     }
 
-    if (eventName == 'new_timeline') {
+    if (eventName == 'patroller_dispatched') {
       final int incidentId = event?.data['id'];
       print('Incident ID: $incidentId');
       Future.microtask(() {
-        widget.ref.read(incidentProvider.notifier).setIncidentId(incidentId);
+        ref.read(incidentProvider.notifier).setIncidentId(incidentId);
       });
     }
 
@@ -71,7 +70,8 @@ class _BuildDefaultSheetState extends State<BuildDefaultSheet> {
           ),
         ),
         const SizedBox(height: 10),
-        if (eventName == 'connection_established') ...[
+        if (eventName == 'connection_established' &&
+            connectionStatus == WebSocketConnectionStatus.connected) ...[
           Text(
             "$message",
             textAlign: TextAlign.center,
@@ -87,7 +87,7 @@ class _BuildDefaultSheetState extends State<BuildDefaultSheet> {
             textAlign: TextAlign.center,
             style: AppText.body2,
           ),
-        ] else if (eventName == 'new_timeline') ...[
+        ] else if (eventName == 'patroller_dispatched') ...[
           Text(
             "🚨  $message",
             textAlign: TextAlign.center,
@@ -106,14 +106,12 @@ class _BuildDefaultSheetState extends State<BuildDefaultSheet> {
                       _isLoading = true;
                     });
 
-                    final incidentId = widget.ref.watch(incidentProvider);
+                    final incidentId = ref.watch(incidentProvider);
                     final String url = await BaseUrlProvider.buildUri(
                         'incident/$incidentId/respond');
 
-                    // Await the emergency response call
-                    await respondEmergency(widget.ref, url);
+                    await respondEmergency(ref, url);
 
-                    // Stop loading once request is completed
                     setState(() {
                       _isLoading = false;
                     });
@@ -131,10 +129,9 @@ class _BuildDefaultSheetState extends State<BuildDefaultSheet> {
                     style: TextStyle(color: Colors.white, fontSize: 16),
                   ),
           ),
-        ] else if (event?.eventName == 'error' ||
-            eventName != 'connection_established') ...[
+        ] else if (eventName != 'connection_established') ...[
           Text(
-            "⚠️  Not Connected to Server",
+            "⚠️  $message",
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 18,
