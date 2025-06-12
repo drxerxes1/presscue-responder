@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:presscue_patroller/core/database/boxes.dart';
 
 abstract class BaseRemoteDataSource {
   final Dio dio;
@@ -46,6 +47,36 @@ abstract class BaseRemoteDataSource {
     }
   }
 
+  Future<Response> postRequestWithToken(String uri, Map<String, dynamic> data) async {
+    final token = boxUsers.get(1)?.token ?? '';
+
+    if (token.isEmpty) {
+      throw Exception('User token is missing. Please log in again.');
+    }
+
+    print('Sending request to: $uri with data: $data');
+    print('token: $token');
+
+    try {
+      final response = await dio.post(
+        uri,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+          },
+        ),
+        data: jsonEncode(data),
+      );
+      handleResponse(response);
+      return response;
+    } on DioException catch (dioError) {
+      _handleDioException(dioError);
+      rethrow;
+    }
+  }
+
   void handleResponse(Response response) {
     if (response.statusCode == 404) {
       return;
@@ -62,6 +93,17 @@ abstract class BaseRemoteDataSource {
         response: response,
         message: 'Request failed. Status Code: ${response.statusCode}',
       );
+    }
+  }
+
+  void _handleDioException(DioException dioError) {
+    if (dioError.type == DioExceptionType.connectionTimeout ||
+        dioError.type == DioExceptionType.sendTimeout ||
+        dioError.type == DioExceptionType.receiveTimeout) {
+      throw Exception(
+          'Request timed out. Please check your connection and try again.');
+    } else {
+      print('Error making POST request: ${dioError.message}');
     }
   }
 }

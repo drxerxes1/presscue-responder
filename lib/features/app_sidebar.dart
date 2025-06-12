@@ -9,9 +9,8 @@ import 'package:presscue_patroller/core/database/boxes.dart';
 import 'package:presscue_patroller/core/database/user.dart';
 import 'package:presscue_patroller/core/navigation/app_routes.dart';
 import 'package:presscue_patroller/core/utils/widgets.dart/custom_message.dart';
-import 'package:presscue_patroller/core/utils/widgets.dart/modal.dart';
+import 'package:presscue_patroller/core/utils/widgets.dart/custom_modal.dart';
 
-import 'location/data/location_services.dart';
 
 class AppSidebar extends ConsumerWidget {
   const AppSidebar({super.key});
@@ -129,9 +128,6 @@ class AppSidebar extends ConsumerWidget {
   void _onOptionSelected(BuildContext context) {
     CustomToastMessage(
       message: 'Coming Soon',
-      iconPath: AppIcons.icPresscueSOS,
-      backgroundColor: AppColors.accent,
-      iconBackgroundColor: AppColors.primaryColor,
     ).show(context);
   }
 

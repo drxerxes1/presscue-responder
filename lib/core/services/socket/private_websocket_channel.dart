@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:presscue_patroller/core/constants/app_constants.dart';
@@ -6,9 +8,15 @@ import 'package:presscue_patroller/core/database/boxes.dart';
 
 enum WebSocketChannelType { private, presence }
 
+enum WebSocketConnectionStatus { connected, disconnected }
+
 class PrivateWebSocketService {
-  late final WebSocketChannel _channel;
+  late WebSocketChannel _channel;
   String? _socketId;
+  Timer? _reconnectTimer;
+  Duration _reconnectDelay =
+      const Duration(seconds: 5); // Fixed or increase this for backoff
+  bool _shouldReconnect = false;
 
   final token = boxUsers.get(1)?.token ?? '';
   final sectorId = boxUsers.get(1)?.sector_id ?? '';
@@ -16,12 +24,18 @@ class PrivateWebSocketService {
   final userId = boxUsers.get(1)?.userId ?? '';
 
   Function(String eventName, dynamic data)? _onEventReceived;
+  Function(WebSocketConnectionStatus)? _onStatusChanged;
+  WebSocketChannelType? _channelType;
 
   void connect({
     required WebSocketChannelType channelType,
+    required Function(WebSocketConnectionStatus) onStatusChanged,
     Function(String eventName, dynamic data)? onEventReceived,
   }) {
     _onEventReceived = onEventReceived;
+    _onStatusChanged = onStatusChanged;
+    _channelType = channelType;
+    _shouldReconnect = true;
 
     final wsUrl =
         'ws://${AppConstants.host}:${AppConstants.wsPort}/app/${AppConstants.appKey}';
@@ -34,6 +48,7 @@ class PrivateWebSocketService {
 
     _channel.stream.listen(
       (message) async {
+        _onStatusChanged?.call(WebSocketConnectionStatus.connected);
         print('Received message: $message');
 
         Map<String, dynamic> data;
@@ -53,7 +68,12 @@ class PrivateWebSocketService {
           return;
         }
 
-        if (event == 'pusher:connection_established') {
+        final eventName = handleEvent(data);
+        final dynamic rawData = data['data'];
+        final dynamic eventData =
+            rawData is String ? jsonDecode(rawData) : rawData;
+
+        if (event == 'pusher:connection_established' && eventName != null) {
           final connectionData = jsonDecode(data['data']);
           _socketId = connectionData['socket_id'];
 
@@ -67,11 +87,10 @@ class PrivateWebSocketService {
               authResult['auth']!,
               channelData: authResult['channel_data'],
             );
+            _onEventReceived?.call(eventName, eventData);
           }
         } else {
-          final eventName = handleEvent(data);
           if (eventName != null) {
-            final eventData = jsonDecode(data['data']);
             _onEventReceived?.call(eventName, eventData);
             print('Event "$eventName" handled with data: $eventData');
           }
@@ -79,24 +98,53 @@ class PrivateWebSocketService {
       },
       onDone: () {
         print('WebSocket connection closed.');
+        _onStatusChanged?.call(WebSocketConnectionStatus.disconnected);
+        if (_shouldReconnect) _scheduleReconnect();
       },
       onError: (error) {
         print('WebSocket error: $error');
+        _onStatusChanged?.call(WebSocketConnectionStatus.disconnected);
+        if (_shouldReconnect) _scheduleReconnect();
       },
+      cancelOnError: true,
     );
+  }
+
+  void _scheduleReconnect() {
+    _reconnectTimer?.cancel();
+
+    print('Attempting reconnect in ${_reconnectDelay.inSeconds} seconds...');
+    _reconnectTimer = Timer(_reconnectDelay, () {
+      if (_shouldReconnect &&
+          _channelType != null &&
+          _onStatusChanged != null) {
+        connect(
+          channelType: _channelType!,
+          onStatusChanged: _onStatusChanged!,
+          onEventReceived: _onEventReceived,
+        );
+      }
+    });
+  }
+
+  void disconnect() {
+    _shouldReconnect = false;
+    _reconnectTimer?.cancel();
+    _channel.sink.close();
+    print('WebSocket manually disconnected.');
   }
 
   String? handleEvent(Map<String, dynamic> data) {
     final event = data['event'];
 
-    if (event == 'App\\Events\\NewTimeline') {
+    if (event == 'pusher:connection_established') {
+      return 'connection_established';
+    } else if (event == 'App\\Events\\NewTimeline') {
       return 'new_timeline';
     } else if (event == 'App\\Events\\InitialTimeline') {
       return 'initial_timeline';
-    } else if (event == 'pusher:member_added') {
-      return 'member_added';
-    } else if (event == 'pusher:member_removed') {
-      return 'member_removed';
+    } else if (event == 'pusher:error') {
+      return 'error';
     }
 
     return null;
@@ -162,9 +210,9 @@ class PrivateWebSocketService {
     _channel.sink.add(jsonEncode(subscriptionMessage));
     print('Subscribed to ${type.name} channel "$channelName"');
   }
-
-  void disconnect() {
-    _channel.sink.close();
-    print('WebSocket disconnected.');
-  }
 }
+
+final webSocketConnectionStatusProvider =
+    StateProvider<WebSocketConnectionStatus>(
+  (ref) => WebSocketConnectionStatus.disconnected,
+);

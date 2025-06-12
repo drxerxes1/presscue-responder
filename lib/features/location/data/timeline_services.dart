@@ -43,28 +43,29 @@ class TimelineService {
       print("Response received: ${response.statusCode}");
 
       if (response.statusCode == 200) {
-  final data = response.data;
-  debugPrint(jsonEncode(data), wrapWidth: 1024);
-  print("Data: $data");
+        final data = response.data;
+        debugPrint(jsonEncode(data), wrapWidth: 1024);
+        print("Data: $data");
 
-  if (data != null &&
-      data['latest_timeline']?['location']?['longitude'] != null &&
-      data['latest_timeline']?['location']?['latitude'] != null) {
-    double citizenLatitude = data['latest_timeline']['location']['latitude'];
-    double citizenLongitude = data['latest_timeline']['location']['longitude'];
+        if (data != null &&
+            data['latest_timeline']?['location']?['longitude'] != null &&
+            data['latest_timeline']?['location']?['latitude'] != null) {
+          double citizenLatitude =
+              data['latest_timeline']['location']['latitude'];
+          double citizenLongitude =
+              data['latest_timeline']['location']['longitude'];
 
-    final currentLocation = ref.read(citizenLocationProvider);
+          final currentLocation = ref.read(citizenLocationProvider);
 
-    if (currentLocation['latitude'] != citizenLatitude ||
-        currentLocation['longitude'] != citizenLongitude) {
-      ref
-          .read(citizenLocationProvider.notifier)
-          .updateLocation(citizenLatitude, citizenLongitude);
-    }
-  }
-  return data;
-}
- else {
+          if (currentLocation['latitude'] != citizenLatitude ||
+              currentLocation['longitude'] != citizenLongitude) {
+            ref
+                .read(citizenLocationProvider.notifier)
+                .updateLocation(citizenLatitude, citizenLongitude);
+          }
+        }
+        return data;
+      } else {
         print("Unexpected status code: ${response.statusCode}");
       }
     } on DioException catch (e) {

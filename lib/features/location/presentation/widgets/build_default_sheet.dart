@@ -5,10 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:presscue_patroller/core/constants/app_colors.dart';
 import 'package:presscue_patroller/core/constants/app_text.dart';
 import 'package:presscue_patroller/core/services/base_url_provider.dart';
+import 'package:presscue_patroller/features/location/data/event_service_provider.dart';
 import 'package:presscue_patroller/features/location/presentation/providers/incident_provider.dart';
 import 'package:vibration/vibration.dart';
 import '../../data/respond_emergency.dart';
-import '../providers/location_provider.dart';
 import '../providers/sheet_provider.dart';
 
 class BuildDefaultSheet extends StatefulWidget {
@@ -31,22 +31,25 @@ class _BuildDefaultSheetState extends State<BuildDefaultSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final serverResponse = widget.ref.watch(serverResponseProvider) ?? {};
     final hasPlayedSound = widget.ref.watch(hasPlayedSoundProvider);
 
-    final String message = serverResponse['message'] ?? "Loading...";
-    var content = serverResponse['content'] ?? "";
-    final int statusCode = serverResponse['statusCode'] ?? 500;
+    final event = widget.ref.watch(eventServiceProvider);
 
-    if (statusCode == 200 && !hasPlayedSound) {
+    final eventName = event?.eventName;
+    final eventData = event?.data;
+
+    final String message = eventData?['message'] ?? "No message provided";
+    var content = eventData?['content'] ?? "No content available";
+
+    if (eventName == 'new_timeline' && !hasPlayedSound) {
       playSound();
       Future.microtask(() {
         widget.ref.read(hasPlayedSoundProvider.notifier).state = true;
       });
     }
 
-    if (statusCode == 200) {
-      final int incidentId = content['id'];
+    if (eventName == 'new_timeline') {
+      final int incidentId = event?.data['id'];
       print('Incident ID: $incidentId');
       Future.microtask(() {
         widget.ref.read(incidentProvider.notifier).setIncidentId(incidentId);
@@ -68,7 +71,7 @@ class _BuildDefaultSheetState extends State<BuildDefaultSheet> {
           ),
         ),
         const SizedBox(height: 10),
-        if (statusCode == 204) ...[
+        if (eventName == 'connection_established') ...[
           Text(
             "$message",
             textAlign: TextAlign.center,
@@ -84,7 +87,7 @@ class _BuildDefaultSheetState extends State<BuildDefaultSheet> {
             textAlign: TextAlign.center,
             style: AppText.body2,
           ),
-        ] else if (statusCode == 200) ...[
+        ] else if (eventName == 'new_timeline') ...[
           Text(
             "🚨  $message",
             textAlign: TextAlign.center,
@@ -128,9 +131,10 @@ class _BuildDefaultSheetState extends State<BuildDefaultSheet> {
                     style: TextStyle(color: Colors.white, fontSize: 16),
                   ),
           ),
-        ] else if (statusCode != 200) ...[
+        ] else if (event?.eventName == 'error' ||
+            eventName != 'connection_established') ...[
           Text(
-            "⚠️  $message",
+            "⚠️  Not Connected to Server",
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 18,
@@ -156,7 +160,7 @@ class _BuildDefaultSheetState extends State<BuildDefaultSheet> {
     Duration position = Duration(seconds: 3);
     player.seek(position);
 
-    if (await Vibration.hasVibrator() ?? false) {
+    if (await Vibration.hasVibrator()) {
       Timer.periodic(Duration(milliseconds: 2000), (timer) {
         Vibration.vibrate(pattern: [500, 1000, 500, 1000]);
 

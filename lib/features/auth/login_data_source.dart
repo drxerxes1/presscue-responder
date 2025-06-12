@@ -3,7 +3,7 @@
 import 'dart:developer';
 
 import 'package:dio/dio.dart';
-import 'package:presscue_patroller/core/services/base_remote_data_source.dart';
+import 'package:presscue_patroller/core/services/dio/base_remote_data_source.dart';
 import 'package:presscue_patroller/core/services/base_url_provider.dart';
 
 abstract class LoginDataSource {

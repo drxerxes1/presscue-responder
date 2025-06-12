@@ -1,7 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
-import 'package:presscue_patroller/core/services/base_url_provider.dart';
-import 'package:presscue_patroller/features/location/data/location_services.dart';
 import '../providers/location_provider.dart';
 import '../../data/marker_services.dart';
 import 'sheet_provider.dart';
@@ -25,7 +23,7 @@ class MapController {
         moveCamera(position.latitude, position.longitude, zoom: 17.0);
       });
 
-      final String url = await BaseUrlProvider.buildUri('location/update');
+      // final String url = await BaseUrlProvider.buildUri('location/update');
       final bool isRespond =
           ref.read(isResponseClickedProvider.notifier).state = false;
 

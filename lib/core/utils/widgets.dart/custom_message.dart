@@ -4,13 +4,12 @@ import 'package:delightful_toast/toast/components/toast_card.dart';
 import 'package:delightful_toast/toast/utils/enums.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:presscue_patroller/core/constants/app_colors.dart';
+import 'package:presscue_patroller/core/constants/app_icons.dart';
 import 'package:presscue_patroller/core/constants/app_text.dart';
 
 class CustomToastMessage extends StatelessWidget {
   final String message;
-  final String iconPath;
-  final Color backgroundColor;
-  final Color iconBackgroundColor;
   final Duration duration;
 
   static Completer<void>? _toastCompleter; // Tracks active toast
@@ -18,10 +17,7 @@ class CustomToastMessage extends StatelessWidget {
   const CustomToastMessage({
     Key? key,
     required this.message,
-    required this.iconPath,
-    this.backgroundColor = Colors.grey,
-    this.iconBackgroundColor = Colors.blue,
-    this.duration = const Duration(milliseconds: 2000),
+    this.duration = const Duration(seconds: 4),
   }) : super(key: key);
 
   void show(BuildContext context) {
@@ -34,15 +30,15 @@ class CustomToastMessage extends StatelessWidget {
       builder: (context) {
         return ToastCard(
           leading: CircleAvatar(
-            backgroundColor: iconBackgroundColor,
+            backgroundColor: AppColors.primaryColor,
             radius: 24,
             child: SvgPicture.asset(
-              iconPath,
+              AppIcons.icPresscueSOS,
               width: 18,
               height: 18,
             ),
           ),
-          color: backgroundColor,
+          color: AppColors.accent,
           title: Text(
             message,
             style: AppText.subtitle2,

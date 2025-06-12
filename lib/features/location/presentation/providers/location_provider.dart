@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 // import 'package:mapbox_gl/mapbox_gl.dart';
 import 'package:presscue_patroller/core/services/route_service.dart';
+import 'package:presscue_patroller/features/location/data/location_tracker.dart';
 import '../../data/location_repository_impl.dart';
 import '../../domain/repositories/location_repository.dart';
 import '../../domain/usecases/check_location_services.dart';
@@ -27,6 +28,10 @@ final checkLocationServicesProvider = Provider<CheckLocationServices>((ref) {
 final requestLocationPermissionProvider = Provider<RequestLocationPermission>((ref) {
   return RequestLocationPermission();
 });
+
+final locationTrackerProvider =
+    StateNotifierProvider<LocationTrackerNotifier, LocationTrackerState>(
+        (ref) => LocationTrackerNotifier());
 
 // Define the GetInitialCameraPosition use case provider
 // final getInitialCameraPositionProvider = Provider<GetInitialCameraPosition>((ref) {

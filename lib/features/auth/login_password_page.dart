@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:presscue_patroller/core/constants/app_colors.dart';
-import 'package:presscue_patroller/core/constants/app_icons.dart';
 import 'package:presscue_patroller/core/constants/app_text.dart';
 import 'package:presscue_patroller/core/database/boxes.dart';
 import 'package:presscue_patroller/core/database/user.dart';
@@ -10,6 +9,7 @@ import 'package:presscue_patroller/core/navigation/app_routes.dart';
 import 'package:presscue_patroller/core/services/device_info.dart';
 import 'package:presscue_patroller/core/utils/widgets.dart/custom_message.dart';
 import 'package:presscue_patroller/features/auth/login_data_source.dart';
+import 'package:presscue_patroller/features/location/presentation/providers/location_provider.dart';
 
 class LoginPasswordPage extends ConsumerStatefulWidget {
   final String phoneNumber;
@@ -114,11 +114,22 @@ class _LoginPasswordPageState extends ConsumerState<LoginPasswordPage> {
                 final deviceInfo = await DeviceInfo.getPhoneInfo();
                 final deviceModel = deviceInfo['model'];
                 String password = _passwordController.text;
+                final locationState = ref.watch(locationNotifierProvider);
+
+                if (locationState == null) {
+                  CustomToastMessage(
+                    message: 'Location not available. Please enable location services or try again later.',
+                  ).show(context);
+                  setState(() => _isLoading = false);
+                  return;
+                }
 
                 Map<String, dynamic> jsonData = {
                   'phone': widget.phoneNumber,
                   'password': password,
                   'device_name': deviceModel,
+                  'longitude': locationState.longitude,
+                  'latitude': locationState.latitude,
                 };
 
                 await _loginUser(jsonData, context);
@@ -190,9 +201,6 @@ class _LoginPasswordPageState extends ConsumerState<LoginPasswordPage> {
 
         CustomToastMessage(
           message: 'Welcome Back! $name',
-          iconPath: AppIcons.icPresscueSOS,
-          backgroundColor: AppColors.accent,
-          iconBackgroundColor: AppColors.primaryColor,
         ).show(context);
         Navigator.pushNamedAndRemoveUntil(
             context, AppRoutes.main, (route) => false);
