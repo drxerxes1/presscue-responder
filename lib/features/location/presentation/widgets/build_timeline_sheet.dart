@@ -1,8 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:presscue_patroller/core/constants/app_colors.dart';
 import 'package:presscue_patroller/core/constants/app_text.dart';
+import 'package:presscue_patroller/core/services/socket/private_websocket_channel.dart';
 import 'package:presscue_patroller/features/location/data/event_service_provider.dart';
+import 'package:presscue_patroller/features/location/presentation/providers/incident_provider.dart';
 import 'package:presscue_patroller/features/location/presentation/providers/location_provider.dart';
 import 'package:timeline_tile/timeline_tile.dart';
 import '../../data/timeline_model.dart';
@@ -23,20 +27,32 @@ class _BuildTimelineSheetState extends ConsumerState<BuildTimelineSheet> {
   String _citizenPhone = "No phone available";
   String _citizenAddress = "No address available";
   List<String> _categoryTitles = [];
+  final privateService = PrivateWebSocketService();
+  bool _isDisposed = false;
+  int? _lastTimelineId;
+  bool _isWebSocketConnected = false;
 
   @override
   void initState() {
     super.initState();
-    final initialData = ref.read(timelineDataProvider);
 
+    final initialData = ref.read(timelineDataProvider);
     if (initialData != null) {
       _populateFromResponse(initialData);
     }
   }
 
+  void _handleWebSocketEvent(String eventName, dynamic data) {
+    if (_isDisposed) return;
+    print('Event Name: $eventName');
+    return ref.read(eventServiceProvider.notifier).updateEvent(eventName, data);
+  }
+
   @override
   void dispose() {
     super.dispose();
+    privateService.disconnect();
+    _isDisposed = true;
   }
 
   void _populateFromResponse(Map<String, dynamic> data) {
@@ -65,53 +81,77 @@ class _BuildTimelineSheetState extends ConsumerState<BuildTimelineSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final event = ref.watch(eventServiceProvider);
-    final eventName = event?.eventName;
-    final rawData = event?.data;
-
-    if (eventName == 'timeline_updated' && rawData != null) {
-      final data = rawData is String ? rawData : rawData;
-      try {
-        final parsed = data is String ? event!.data : data;
-        final parsedData = parsed is String ? null : parsed;
-
-        if (parsedData != null) {
-          final newCitizenName =
-              parsedData['citizen']?['name']?.toString() ?? "Unknown Citizen";
-          final newCitizenPhone = parsedData['citizen']?['phone']?.toString() ??
-              "No phone available";
-          final newCitizenAddress = parsedData['timelines']
-                  ?.last['location']?['address']
-                  ?.toString() ??
-              "No address available";
-          final List<String> newCategoryTitles =
-              (parsedData['category'] != null)
-                  ? [parsedData['category']['title']?.toString() ?? "Unknown"]
-                  : [];
-
-          final newEvents = (parsedData['timelines'] as List<dynamic>?)
-                  ?.map((timeline) =>
-                      TimelineEvent.fromJson(timeline as Map<String, dynamic>))
-                  .toList() ??
-              [];
-
-          // Only update if changed
-          if (!mounted) return Container();
-
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            setState(() {
-              _citizenName = newCitizenName;
-              _citizenPhone = newCitizenPhone;
-              _citizenAddress = newCitizenAddress;
-              _categoryTitles = newCategoryTitles;
-              _events = newEvents;
+    // Connect to WebSocket only once
+    final incidentId = ref.watch(incidentProvider);
+    if (!_isWebSocketConnected && incidentId != null) {
+      _isWebSocketConnected = true;
+      privateService.connect(
+        onStatusChanged: (status) {
+          if (!_isDisposed && mounted) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              ref.read(webSocketConnectionStatusProvider.notifier).state =
+                  status;
             });
-          });
-        }
-      } catch (e) {
-        debugPrint("Error parsing timeline update: $e");
-      }
+          }
+        },
+        channelType: WebSocketChannelType.private,
+        customChannelPrefix: 'private-incident.$incidentId',
+        onEventReceived: _handleWebSocketEvent,
+      );
     }
+
+    // Handle incoming WebSocket events (new_timeline)
+    ref.listen(eventServiceProvider, (previous, next) {
+      if (!_isDisposed && next != null && next.eventName == 'new_timeline') {
+        final rawData = next.data;
+        try {
+          final parsedOuter = rawData is String ? jsonDecode(rawData) : rawData;
+          final parsed = parsedOuter is Map && parsedOuter['timeline'] == null
+              ? jsonDecode(parsedOuter['data'])
+              : parsedOuter;
+
+          final timelineJson = parsed['timeline'];
+          if (timelineJson != null) {
+            final int timelineId = timelineJson['id'];
+
+            if (_lastTimelineId == timelineId) return;
+            _lastTimelineId = timelineId;
+
+            final newTimelineEvent =
+                TimelineEvent.fromJson(timelineJson as Map<String, dynamic>);
+
+            final incidentJson = timelineJson['incident'];
+            final categoryJson = incidentJson?['category'];
+
+            final List<String> newCategoryTitles = categoryJson != null
+                ? [categoryJson['title']?.toString() ?? 'Unknown']
+                : [];
+
+            final newCitizenName =
+                incidentJson?['citizen']?['name']?.toString() ??
+                    "Unknown Citizen";
+            final newCitizenPhone =
+                incidentJson?['citizen']?['phone']?.toString() ?? "No phone";
+            final newAddress =
+                timelineJson['location']?['address']?.toString() ??
+                    'No address available';
+
+            if (mounted) {
+              setState(() {
+                _events.add(newTimelineEvent);
+                _citizenName = newCitizenName;
+                _citizenPhone = newCitizenPhone;
+                _citizenAddress = newAddress;
+                _categoryTitles = newCategoryTitles;
+              });
+            }
+          }
+        } catch (e, stack) {
+          debugPrint('Error decoding new_timeline event: $e');
+          debugPrintStack(stackTrace: stack);
+        }
+      }
+    });
 
     return ListView(
       controller: widget.scrollController,

@@ -91,10 +91,6 @@ class _MapState extends ConsumerState<MapPage> {
                 shape: const CircleBorder(),
                 onPressed: () {
                   setState(() {
-                    // Future.microtask(() {
-                    //   ref.read(locationServiceProvider).stopSendingLocation();
-                    //   ref.read(isResponseClickedProvider.notifier).state = true;
-                    // });
                     mapController.toggleFollow();
                   });
                 },

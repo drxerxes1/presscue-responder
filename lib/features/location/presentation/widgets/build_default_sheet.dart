@@ -30,8 +30,8 @@ class _BuildDefaultSheetState extends ConsumerState<BuildDefaultSheet> {
   bool _isLoading = false;
   Timer? _denyTimer;
   bool hasResponded = false;
-  final privateService = PrivateWebSocketService();
-  bool _isDisposed = false;
+  // final privateService = PrivateWebSocketService();
+  // bool _isDisposed = false;
 
   @override
   void dispose() {
@@ -97,6 +97,14 @@ class _BuildDefaultSheetState extends ConsumerState<BuildDefaultSheet> {
       }
     }
 
+    // void _handleWebSocketEvent(String eventName, dynamic data) {
+    //   if (_isDisposed) return;
+    //   print('Event Name: $eventName');
+    //   return ref
+    //       .read(eventServiceProvider.notifier)
+    //       .updateEvent(eventName, data);
+    // }
+
     return ListView(
       controller: widget.scrollController,
       children: [
@@ -157,22 +165,28 @@ class _BuildDefaultSheetState extends ConsumerState<BuildDefaultSheet> {
 
                     await respondEmergency(ref, url);
 
-                    privateService.connect(
-                      onStatusChanged: (status) {
-                        if (!_isDisposed && mounted) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (mounted) {
-                              ref
-                                  .read(webSocketConnectionStatusProvider
-                                      .notifier)
-                                  .state = status;
-                            }
-                          });
-                        }
-                      },
-                      channelType: WebSocketChannelType.private,
-                      customChannelPrefix: 'private-incident.$incidentId',
-                    );
+                    // final String keywordsUrl = await BaseUrlProvider.buildUri(
+                    //     'incident/$incidentId/keywords');
+
+                    // await respondEmergency(ref, keywordsUrl);
+
+                    // privateService.connect(
+                    //   onStatusChanged: (status) {
+                    //     if (!_isDisposed && mounted) {
+                    //       WidgetsBinding.instance.addPostFrameCallback((_) {
+                    //         if (mounted) {
+                    //           ref
+                    //               .read(webSocketConnectionStatusProvider
+                    //                   .notifier)
+                    //               .state = status;
+                    //         }
+                    //       });
+                    //     }
+                    //   },
+                    //   channelType: WebSocketChannelType.private,
+                    //   customChannelPrefix: 'private-incident.$incidentId',
+                    //   onEventReceived: _handleWebSocketEvent,
+                    // );
 
                     setState(() {
                       _isLoading = false;
