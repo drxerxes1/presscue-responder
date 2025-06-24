@@ -107,7 +107,7 @@ class _MapState extends ConsumerState<MapPage> {
               ),
             ),
             DraggableScrollableSheet(
-              initialChildSize: 0.1,
+              initialChildSize: 0.2,
               minChildSize: 0.1,
               maxChildSize: isResponseClicked ? 0.6 : 0.4,
               builder: (context, scrollController) {

@@ -1,11 +1,11 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:presscue_patroller/core/constants/app_colors.dart';
 import 'package:presscue_patroller/core/constants/app_text.dart';
+import 'package:presscue_patroller/features/location/data/event_service_provider.dart';
+import 'package:presscue_patroller/features/location/presentation/providers/location_provider.dart';
 import 'package:timeline_tile/timeline_tile.dart';
 import '../../data/timeline_model.dart';
-import '../../data/timeline_services.dart';
 
 class BuildTimelineSheet extends ConsumerStatefulWidget {
   final ScrollController scrollController;
@@ -18,9 +18,7 @@ class BuildTimelineSheet extends ConsumerStatefulWidget {
 }
 
 class _BuildTimelineSheetState extends ConsumerState<BuildTimelineSheet> {
-  final TimelineService _timelineService = TimelineService();
   List<TimelineEvent> _events = [];
-  Timer? _timer;
   String _citizenName = "Unknown Citizen";
   String _citizenPhone = "No phone available";
   String _citizenAddress = "No address available";
@@ -29,63 +27,92 @@ class _BuildTimelineSheetState extends ConsumerState<BuildTimelineSheet> {
   @override
   void initState() {
     super.initState();
-    _startPolling();
+    final initialData = ref.read(timelineDataProvider);
+
+    if (initialData != null) {
+      _populateFromResponse(initialData);
+    }
   }
 
-  void _startPolling() {
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 5), (_) async {
-      await _fetchTimelineUpdates();
-    });
+  @override
+  void dispose() {
+    super.dispose();
   }
 
-  Future<void> _fetchTimelineUpdates() async {
-    final data = await _timelineService.fetchTimelineUpdates(ref);
-    if (data == null) return;
-
+  void _populateFromResponse(Map<String, dynamic> data) {
     final newCitizenName =
         data['citizen']?['name']?.toString() ?? "Unknown Citizen";
     final newCitizenPhone =
         data['citizen']?['phone']?.toString() ?? "No phone available";
-    final newCitizenAddress =
-        data['latest_timeline']?['location']?['address'].toString() ??
-            "No address available";
-    final newCategoryTitles = (data['categories'] as List<dynamic>?)
-            ?.map((category) =>
-                category['title']?.toString() ?? "Unknown Category")
-            .toList() ??
-        [];
+    final List<String> newCategoryTitles = data['category'] != null
+        ? [data['category']['title']?.toString() ?? "Unknown"]
+        : [];
+
     final newEvents = (data['timelines'] as List<dynamic>?)
             ?.map((timeline) =>
                 TimelineEvent.fromJson(timeline as Map<String, dynamic>))
             .toList() ??
         [];
 
-    if (!mounted) return;
-
-    if (_citizenName != newCitizenName ||
-        _citizenPhone != newCitizenPhone ||
-        _citizenPhone != newCitizenAddress ||
-        _categoryTitles != newCategoryTitles ||
-        _events != newEvents) {
-      setState(() {
-        _citizenName = newCitizenName;
-        _citizenPhone = newCitizenPhone;
-        _citizenAddress = newCitizenAddress;
-        _categoryTitles = newCategoryTitles;
-        _events = newEvents;
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
+    setState(() {
+      _citizenName = newCitizenName;
+      _citizenPhone = newCitizenPhone;
+      _citizenAddress = "Unknown";
+      _categoryTitles = newCategoryTitles;
+      _events = newEvents;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final event = ref.watch(eventServiceProvider);
+    final eventName = event?.eventName;
+    final rawData = event?.data;
+
+    if (eventName == 'timeline_updated' && rawData != null) {
+      final data = rawData is String ? rawData : rawData;
+      try {
+        final parsed = data is String ? event!.data : data;
+        final parsedData = parsed is String ? null : parsed;
+
+        if (parsedData != null) {
+          final newCitizenName =
+              parsedData['citizen']?['name']?.toString() ?? "Unknown Citizen";
+          final newCitizenPhone = parsedData['citizen']?['phone']?.toString() ??
+              "No phone available";
+          final newCitizenAddress = parsedData['timelines']
+                  ?.last['location']?['address']
+                  ?.toString() ??
+              "No address available";
+          final List<String> newCategoryTitles =
+              (parsedData['category'] != null)
+                  ? [parsedData['category']['title']?.toString() ?? "Unknown"]
+                  : [];
+
+          final newEvents = (parsedData['timelines'] as List<dynamic>?)
+                  ?.map((timeline) =>
+                      TimelineEvent.fromJson(timeline as Map<String, dynamic>))
+                  .toList() ??
+              [];
+
+          // Only update if changed
+          if (!mounted) return Container();
+
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            setState(() {
+              _citizenName = newCitizenName;
+              _citizenPhone = newCitizenPhone;
+              _citizenAddress = newCitizenAddress;
+              _categoryTitles = newCategoryTitles;
+              _events = newEvents;
+            });
+          });
+        }
+      } catch (e) {
+        debugPrint("Error parsing timeline update: $e");
+      }
+    }
+
     return ListView(
       controller: widget.scrollController,
       children: [
@@ -123,7 +150,7 @@ class _BuildTimelineSheetState extends ConsumerState<BuildTimelineSheet> {
     return Row(
       children: [
         Text("$label: ", style: AppText.body2),
-        Text(value, style: AppText.body2),
+        Flexible(child: Text(value, style: AppText.body2)),
       ],
     );
   }
@@ -163,7 +190,7 @@ class _BuildTimelineSheetState extends ConsumerState<BuildTimelineSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSubTitle("Timeline:"),
+        _buildTitle("Timeline:"),
         ..._events.reversed.toList().asMap().entries.map((entry) {
           final index = entry.key;
           final event = entry.value;
@@ -200,17 +227,6 @@ class _BuildTimelineSheetState extends ConsumerState<BuildTimelineSheet> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildSubTitle(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 10),
-      child: Text(text,
-          style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.dark)),
     );
   }
 }

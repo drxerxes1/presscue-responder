@@ -31,6 +31,7 @@ class PrivateWebSocketService {
     required WebSocketChannelType channelType,
     required Function(WebSocketConnectionStatus) onStatusChanged,
     Function(String eventName, dynamic data)? onEventReceived,
+    String? customChannelPrefix,
   }) {
     _onEventReceived = onEventReceived;
     _onStatusChanged = onStatusChanged;
@@ -39,10 +40,9 @@ class PrivateWebSocketService {
 
     final wsUrl =
         'ws://${AppConstants.host}:${AppConstants.wsPort}/app/${AppConstants.appKey}';
-    final baseChannel = '${AppConstants.channelName}.$sectorId';
     final channelName = channelType == WebSocketChannelType.presence
-        ? 'presence-$baseChannel'
-        : 'private-$baseChannel';
+        ? 'presence-${AppConstants.channelName}.$sectorId'
+        : '${customChannelPrefix ?? "private-patroller"}';
 
     _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
 
@@ -92,7 +92,7 @@ class PrivateWebSocketService {
         } else {
           if (eventName != null) {
             _onEventReceived?.call(eventName, eventData);
-            print('Event "$eventName" handled with data: $eventData');
+            // print('Event "$eventName" handled with data: $eventData');
           }
         }
       },

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,6 +28,16 @@ class BuildDefaultSheet extends ConsumerStatefulWidget {
 class _BuildDefaultSheetState extends ConsumerState<BuildDefaultSheet> {
   final player = AudioPlayer();
   bool _isLoading = false;
+  Timer? _denyTimer;
+  bool hasResponded = false;
+  final privateService = PrivateWebSocketService();
+  bool _isDisposed = false;
+
+  @override
+  void dispose() {
+    _denyTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,10 +46,6 @@ class _BuildDefaultSheetState extends ConsumerState<BuildDefaultSheet> {
     final event = ref.watch(eventServiceProvider);
 
     final eventName = event?.eventName;
-    final eventData = event?.data;
-
-    final String message = eventData?['message'] ?? "No message provided";
-    var content = eventData?['content'] ?? "No content available";
 
     if (eventName == 'patroller_dispatched' && !hasPlayedSound) {
       playSound();
@@ -48,11 +55,46 @@ class _BuildDefaultSheetState extends ConsumerState<BuildDefaultSheet> {
     }
 
     if (eventName == 'patroller_dispatched') {
-      final int incidentId = event?.data['id'];
-      print('Incident ID: $incidentId');
-      Future.microtask(() {
-        ref.read(incidentProvider.notifier).setIncidentId(incidentId);
-      });
+      try {
+        final rawData = event?.data;
+        final decodedData = rawData is String ? jsonDecode(rawData) : rawData;
+        final incidentId = decodedData?['incident']?['id'];
+
+        if (incidentId is int) {
+          Future.microtask(() {
+            ref.read(incidentProvider.notifier).setIncidentId(incidentId);
+          });
+
+          if (_denyTimer == null || !_denyTimer!.isActive) {
+            _denyTimer = Timer(const Duration(seconds: 10), () async {
+              if (!hasResponded) {
+                final url = await BaseUrlProvider.buildUri(
+                  'incident/$incidentId/deny',
+                );
+                try {
+                  await respondEmergency(ref, url);
+
+                  ref.read(eventServiceProvider.notifier).updateEvent(
+                    'connection_established',
+                    {},
+                  );
+                  ref.read(hasPlayedSoundProvider.notifier).state = false;
+
+                  debugPrint('[BuildDefaultSheet] Auto-denied after 10s');
+                } catch (e) {
+                  debugPrint('[BuildDefaultSheet] Auto-deny failed: $e');
+                }
+              }
+            });
+          }
+
+          debugPrint('Incident ID: $incidentId');
+        } else {
+          debugPrint('[BuildDefaultSheet] ID is not an int or missing.');
+        }
+      } catch (e) {
+        debugPrint('[BuildDefaultSheet] Failed to decode event data: $e');
+      }
     }
 
     return ListView(
@@ -73,7 +115,7 @@ class _BuildDefaultSheetState extends ConsumerState<BuildDefaultSheet> {
         if (eventName == 'connection_established' &&
             connectionStatus == WebSocketConnectionStatus.connected) ...[
           Text(
-            "$message",
+            "Connection Established",
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 18,
@@ -83,13 +125,13 @@ class _BuildDefaultSheetState extends ConsumerState<BuildDefaultSheet> {
           ),
           const SizedBox(height: 10),
           Text(
-            content,
+            'You are connected to the server. On standby for updates.',
             textAlign: TextAlign.center,
             style: AppText.body2,
           ),
         ] else if (eventName == 'patroller_dispatched') ...[
           Text(
-            "🚨  $message",
+            "🚨  Emergency !!",
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 18,
@@ -106,11 +148,31 @@ class _BuildDefaultSheetState extends ConsumerState<BuildDefaultSheet> {
                       _isLoading = true;
                     });
 
+                    hasResponded = true;
+                    _denyTimer?.cancel();
+
                     final incidentId = ref.watch(incidentProvider);
                     final String url = await BaseUrlProvider.buildUri(
                         'incident/$incidentId/respond');
 
                     await respondEmergency(ref, url);
+
+                    privateService.connect(
+                      onStatusChanged: (status) {
+                        if (!_isDisposed && mounted) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) {
+                              ref
+                                  .read(webSocketConnectionStatusProvider
+                                      .notifier)
+                                  .state = status;
+                            }
+                          });
+                        }
+                      },
+                      channelType: WebSocketChannelType.private,
+                      customChannelPrefix: 'private-incident.$incidentId',
+                    );
 
                     setState(() {
                       _isLoading = false;
@@ -131,7 +193,7 @@ class _BuildDefaultSheetState extends ConsumerState<BuildDefaultSheet> {
           ),
         ] else if (eventName != 'connection_established') ...[
           Text(
-            "⚠️  $message",
+            "⚠️  Not Connected",
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 18,
@@ -141,7 +203,7 @@ class _BuildDefaultSheetState extends ConsumerState<BuildDefaultSheet> {
           ),
           const SizedBox(height: 5),
           Text(
-            content,
+            "Not connected to server.",
             textAlign: TextAlign.center,
             style: AppText.body2,
           ),

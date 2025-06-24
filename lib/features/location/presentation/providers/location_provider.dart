@@ -24,6 +24,8 @@ final checkLocationServicesProvider = Provider<CheckLocationServices>((ref) {
   return CheckLocationServices();
 });
 
+final timelineDataProvider = StateProvider<Map<String, dynamic>?>((ref) => null);
+
 // Define the RequestLocationPermission use case provider
 final requestLocationPermissionProvider = Provider<RequestLocationPermission>((ref) {
   return RequestLocationPermission();

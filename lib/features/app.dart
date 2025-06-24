@@ -25,6 +25,7 @@ class _MainPageState extends ConsumerState<MainPage> {
   final privateService = PrivateWebSocketService();
   bool _isDisposed = false;
   late ProviderSubscription<Position?> _locationListener;
+  final sectorId = boxUsers.get(1)?.sector_id ?? '';
 
   @override
   void initState() {
@@ -57,6 +58,7 @@ class _MainPageState extends ConsumerState<MainPage> {
         }
       },
       channelType: WebSocketChannelType.private,
+      customChannelPrefix: 'private-patroller.$sectorId',
       onEventReceived: _handleWebSocketEvent,
     );
   }
