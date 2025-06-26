@@ -6,6 +6,7 @@ import 'package:presscue_patroller/core/constants/app_colors.dart';
 import 'package:presscue_patroller/core/constants/app_text.dart';
 import 'package:presscue_patroller/core/services/socket/private_websocket_channel.dart';
 import 'package:presscue_patroller/features/location/data/event_service_provider.dart';
+import 'package:presscue_patroller/features/location/presentation/providers/citizen_location_provider.dart';
 import 'package:presscue_patroller/features/location/presentation/providers/incident_provider.dart';
 import 'package:presscue_patroller/features/location/presentation/providers/location_provider.dart';
 import 'package:timeline_tile/timeline_tile.dart';
@@ -31,15 +32,48 @@ class _BuildTimelineSheetState extends ConsumerState<BuildTimelineSheet> {
   bool _isDisposed = false;
   int? _lastTimelineId;
   bool _isWebSocketConnected = false;
+  Map<String, dynamic>? _latestTimeline;
+  List<String>? _latestKeywords;
+  late final ProviderSubscription<Map<String, dynamic>?> _timelineSub;
+  late final ProviderSubscription<List<String>?> _keywordsSub;
 
   @override
   void initState() {
     super.initState();
 
-    final initialData = ref.read(timelineDataProvider);
-    if (initialData != null) {
-      _populateFromResponse(initialData);
-    }
+    _latestTimeline = ref.read(timelineDataProvider);
+    _latestKeywords = ref.read(keywordsDataProvider);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(timelineDataProvider.notifier).state = _latestTimeline;
+      ref.read(keywordsDataProvider.notifier).state = _latestKeywords;
+
+      _tryPopulate();
+    });
+
+    _timelineSub = ref.listenManual<Map<String, dynamic>?>(
+      timelineDataProvider,
+      (prev, next) {
+        if (!mounted) return;
+        _latestTimeline = next;
+        _tryPopulate();
+      },
+    );
+
+    _keywordsSub = ref.listenManual<List<String>?>(
+      keywordsDataProvider,
+      (prev, next) {
+        if (!mounted) return;
+        _latestKeywords = next;
+        _tryPopulate();
+      },
+    );
+  }
+
+  void _tryPopulate() {
+    if (_latestTimeline != null && _latestKeywords != null && mounted) {
+      _populateFromResponse(_latestTimeline!, _latestKeywords!);
+    } else {}
   }
 
   void _handleWebSocketEvent(String eventName, dynamic data) {
@@ -50,19 +84,22 @@ class _BuildTimelineSheetState extends ConsumerState<BuildTimelineSheet> {
 
   @override
   void dispose() {
-    super.dispose();
+    _timelineSub.close();
+    _keywordsSub.close();
     privateService.disconnect();
     _isDisposed = true;
+    super.dispose();
   }
 
-  void _populateFromResponse(Map<String, dynamic> data) {
+  void _populateFromResponse(
+      Map<String, dynamic> data, List<String> keywordsData) {
     final newCitizenName =
         data['citizen']?['name']?.toString() ?? "Unknown Citizen";
     final newCitizenPhone =
         data['citizen']?['phone']?.toString() ?? "No phone available";
-    final List<String> newCategoryTitles = data['category'] != null
-        ? [data['category']['title']?.toString() ?? "Unknown"]
-        : [];
+    final newAddress =
+        data['location']?['address']?.toString() ?? "No address available";
+    final List<String> newCategoryTitles = keywordsData;
 
     final newEvents = (data['timelines'] as List<dynamic>?)
             ?.map((timeline) =>
@@ -70,10 +107,24 @@ class _BuildTimelineSheetState extends ConsumerState<BuildTimelineSheet> {
             .toList() ??
         [];
 
+    final latestTimeline = (data['timelines'] as List<dynamic>?)?.lastOrNull;
+    final location = latestTimeline?['location'];
+    final double? lat = location?['latitude']?.toDouble();
+    final double? lng = location?['longitude']?.toDouble();
+
+    if (lat != null && lng != null) {
+      ref.read(citizenLocationProvider.notifier).updateLocation(lat, lng);
+      print('Location updated: ($lat, $lng)');
+    } else {
+      print('No valid location found in latest timeline');
+    }
+
+    if (!mounted) return;
+
     setState(() {
       _citizenName = newCitizenName;
       _citizenPhone = newCitizenPhone;
-      _citizenAddress = "Unknown";
+      _citizenAddress = newAddress;
       _categoryTitles = newCategoryTitles;
       _events = newEvents;
     });
@@ -81,7 +132,6 @@ class _BuildTimelineSheetState extends ConsumerState<BuildTimelineSheet> {
 
   @override
   Widget build(BuildContext context) {
-    // Connect to WebSocket only once
     final incidentId = ref.watch(incidentProvider);
     if (!_isWebSocketConnected && incidentId != null) {
       _isWebSocketConnected = true;
@@ -120,29 +170,42 @@ class _BuildTimelineSheetState extends ConsumerState<BuildTimelineSheet> {
             final newTimelineEvent =
                 TimelineEvent.fromJson(timelineJson as Map<String, dynamic>);
 
-            final incidentJson = timelineJson['incident'];
-            final categoryJson = incidentJson?['category'];
+            // final incidentJson = timelineJson['incident'];
+            // final categoryJson = incidentJson?['category'];
 
-            final List<String> newCategoryTitles = categoryJson != null
-                ? [categoryJson['title']?.toString() ?? 'Unknown']
-                : [];
+            // final List<String> newCategoryTitles = categoryJson != null
+            //     ? [categoryJson['title']?.toString() ?? 'Unknown']
+            //     : [];
 
-            final newCitizenName =
-                incidentJson?['citizen']?['name']?.toString() ??
-                    "Unknown Citizen";
-            final newCitizenPhone =
-                incidentJson?['citizen']?['phone']?.toString() ?? "No phone";
+            // final newCitizenName =
+            //     incidentJson?['citizen']?['name']?.toString() ??
+            //         "Unknown Citizen";
+            // final newCitizenPhone =
+            //     incidentJson?['citizen']?['phone']?.toString() ?? "No phone";
             final newAddress =
                 timelineJson['location']?['address']?.toString() ??
                     'No address available';
 
+            final location = timelineJson['location'];
+            final double? lat = location?['latitude']?.toDouble();
+            final double? lng = location?['longitude']?.toDouble();
+
+            if (lat != null && lng != null) {
+              ref
+                  .read(citizenLocationProvider.notifier)
+                  .updateLocation(lat, lng);
+              print('Location updated: ($lat, $lng)');
+            } else {
+              print('No valid location found in latest timeline');
+            }
+
             if (mounted) {
               setState(() {
                 _events.add(newTimelineEvent);
-                _citizenName = newCitizenName;
-                _citizenPhone = newCitizenPhone;
+                // _citizenName = newCitizenName;
+                // _citizenPhone = newCitizenPhone;
                 _citizenAddress = newAddress;
-                _categoryTitles = newCategoryTitles;
+                // _categoryTitles = newCategoryTitles;
               });
             }
           }

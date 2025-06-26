@@ -32,7 +32,7 @@ Future<dynamic> respondEmergency(WidgetRef ref, String url) async {
         ref.read(hasPlayedSoundProvider.notifier).state = false;
       });
 
-      return response.data; // ✅ Return the data here
+      return response.data;
     } else {
       print("Dispatch failed: ${response.statusCode}");
       ref.read(isLoadingProvider.notifier).state = false;
@@ -43,4 +43,33 @@ Future<dynamic> respondEmergency(WidgetRef ref, String url) async {
     ref.read(isLoadingProvider.notifier).state = false;
     return null;
   }
+}
+
+Future<List<String>?> getKeywords(String url) async {
+  final token = boxUsers.get(1)?.token ?? '';
+  print('Sending Data to: $url');
+
+  try {
+    final response = await Dio().get(
+      url,
+      options: Options(headers: {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final current = response.data['current'];
+      print("Get keywords response received: ${response.data}");
+      if (current != null && current is List) {
+        final keywords = current.map((e) => e.toString()).toList();
+        print('Parsed keywords: $keywords');
+        return keywords;
+      }
+    }
+  } catch (e) {
+    print("Error getting keywords: $e");
+  }
+
+  return null;
 }

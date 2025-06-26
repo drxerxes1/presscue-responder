@@ -9,6 +9,7 @@ import 'package:presscue_patroller/core/services/base_url_provider.dart';
 import 'package:presscue_patroller/core/services/socket/private_websocket_channel.dart';
 import 'package:presscue_patroller/features/location/data/event_service_provider.dart';
 import 'package:presscue_patroller/features/location/presentation/providers/incident_provider.dart';
+import 'package:presscue_patroller/features/location/presentation/providers/location_provider.dart';
 import 'package:vibration/vibration.dart';
 import '../../data/respond_emergency.dart';
 import '../providers/sheet_provider.dart';
@@ -152,42 +153,31 @@ class _BuildDefaultSheetState extends ConsumerState<BuildDefaultSheet> {
             onPressed: _isLoading
                 ? null
                 : () async {
+                    if (!mounted) return;
+
                     setState(() {
                       _isLoading = true;
                     });
 
                     hasResponded = true;
-                    _denyTimer?.cancel();
 
                     final incidentId = ref.watch(incidentProvider);
                     final String url = await BaseUrlProvider.buildUri(
                         'incident/$incidentId/respond');
+                    final String keywordsUrl = await BaseUrlProvider.buildUri(
+                        'incident/$incidentId/keywords');
+
+                    final keywords = await getKeywords(keywordsUrl);
 
                     await respondEmergency(ref, url);
 
-                    // final String keywordsUrl = await BaseUrlProvider.buildUri(
-                    //     'incident/$incidentId/keywords');
+                    if (!mounted) return;
 
-                    // await respondEmergency(ref, keywordsUrl);
+                    if (keywords != null) {
+                      ref.read(keywordsDataProvider.notifier).state = keywords;
+                    }
 
-                    // privateService.connect(
-                    //   onStatusChanged: (status) {
-                    //     if (!_isDisposed && mounted) {
-                    //       WidgetsBinding.instance.addPostFrameCallback((_) {
-                    //         if (mounted) {
-                    //           ref
-                    //               .read(webSocketConnectionStatusProvider
-                    //                   .notifier)
-                    //               .state = status;
-                    //         }
-                    //       });
-                    //     }
-                    //   },
-                    //   channelType: WebSocketChannelType.private,
-                    //   customChannelPrefix: 'private-incident.$incidentId',
-                    //   onEventReceived: _handleWebSocketEvent,
-                    // );
-
+                    if (!mounted) return;
                     setState(() {
                       _isLoading = false;
                     });
