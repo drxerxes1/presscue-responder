@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
+import 'package:presscue_patroller/features/location/data/get_route_coordinates.dart';
 import '../providers/location_provider.dart';
 import '../../data/marker_services.dart';
 import 'sheet_provider.dart';
@@ -12,9 +13,13 @@ class MapController {
 
   MapController(this.ref);
 
+  PolylineAnnotationManager? _polylineManager;
+
   void initMap(MapboxMap controller) async {
     mapboxMap = controller;
     mapMarkerService = MapMarkerService(controller);
+    _polylineManager =
+        await mapboxMap!.annotations.createPolylineAnnotationManager();
     _setZoomBounds();
 
     final position = ref.read(locationNotifierProvider);
@@ -23,19 +28,7 @@ class MapController {
         moveCamera(position.latitude, position.longitude, zoom: 17.0);
       });
 
-      // final String url = await BaseUrlProvider.buildUri('location/update');
-      final bool isRespond =
-          ref.read(isResponseClickedProvider.notifier).state = false;
-
-      if (!isRespond) {
-        // ref.read(locationServiceProvider).startSendingLocation(
-        //       position.latitude,
-        //       position.longitude,
-        //       url,
-        //       (responseData) => print("Server Response: $responseData"),
-        //       ref,
-        //     );
-      }
+      ref.read(isResponseClickedProvider.notifier).state = false;
 
       mapboxMap?.location.updateSettings(
         LocationComponentSettings(
@@ -46,6 +39,32 @@ class MapController {
         ),
       );
     }
+  }
+
+  Future<void> drawNavigationRoute({
+    required double fromLat,
+    required double fromLng,
+    required double toLat,
+    required double toLng,
+  }) async {
+    final coords = await getRouteCoordinatesWithDio(
+      fromLat: fromLat,
+      fromLng: fromLng,
+      toLat: toLat,
+      toLng: toLng,
+    );
+    print('fromLat: $fromLat, fromLng: $fromLng, toLat: $toLat, toLng: $toLng');
+
+    await _polylineManager?.deleteAll();
+
+    await _polylineManager?.create(
+      PolylineAnnotationOptions(
+        geometry: LineString(coordinates: coords),
+        lineColor: 0xFF0071BC,
+        lineWidth: 5.0,
+        lineOpacity: 1.0,
+      ),
+    );
   }
 
   void _setZoomBounds() {

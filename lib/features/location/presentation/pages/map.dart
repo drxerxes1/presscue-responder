@@ -48,12 +48,41 @@ class _MapState extends ConsumerState<MapPage> {
       if (next != null && mapController.isFollowing) {
         mapController.moveCamera(next.latitude, next.longitude);
       }
+
+      final citizenLocation = ref.read(citizenLocationProvider);
+
+      if (next != null &&
+          citizenLocation['latitude'] != null &&
+          citizenLocation['longitude'] != null) {
+        // Fire-and-forget call to drawNavigationRoute
+        mapController
+            .drawNavigationRoute(
+          fromLat: next.latitude,
+          fromLng: next.longitude,
+          toLat: citizenLocation['latitude']!,
+          toLng: citizenLocation['longitude']!,
+        )
+            .catchError((e) {
+          // Optional: log or show error
+          print('Error drawing navigation route: $e');
+        });
+      }
     });
 
     ref.listen(citizenLocationProvider, (previous, next) {
       if (next['latitude'] != null && next['longitude'] != null) {
-        mapController.mapMarkerService
-            ?.addMarker(next['latitude']!, next['longitude']!);
+        final current = ref.read(locationNotifierProvider);
+        if (current != null) {
+          mapController.mapMarkerService
+              ?.addMarker(next['latitude']!, next['longitude']!);
+
+          mapController.drawNavigationRoute(
+            fromLat: current.latitude,
+            fromLng: current.longitude,
+            toLat: next['latitude']!,
+            toLng: next['longitude']!,
+          );
+        }
       } else {
         mapController.mapMarkerService?.removeMarker();
       }
@@ -124,8 +153,7 @@ class _MapState extends ConsumerState<MapPage> {
                   ),
                   child: isResponseClicked
                       ? BuildTimelineSheet(scrollController: scrollController)
-                      : BuildDefaultSheet(
-                          scrollController: scrollController),
+                      : BuildDefaultSheet(scrollController: scrollController),
                 );
               },
             ),
